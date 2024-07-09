@@ -1,21 +1,5 @@
 # Tauri + React + Vite + Tailwind CSS
 
-This template is only for the strong minds.
-
-Make sure you have Rust installed and rust toolchain upto date.
-INSTALL TAURI CLI:
-cargo install tauri-cli
-Or npm install --save-dev @tauri-apps/cli
-
-To Run:
-npm run tauri dev
-or 
-cargo tauri dev
-
-Further Documentation are under developer.
-
-# Tauri + React + Vite + Tailwind CSS
-
 This template is designed for developers with Strong-mind.
 
 ## Prerequisites
