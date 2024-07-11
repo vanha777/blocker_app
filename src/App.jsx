@@ -3,8 +3,22 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import { invoke } from '@tauri-apps/api'
+import { enable, isEnabled, disable } from "tauri-plugin-autostart-api";
 
 function App() {
+
+  // useEffect(() => {
+  //   auto_start();
+  // }, []);
+
+  const auto_start = async () => {
+    // set auto-start  -> only required first-time -> will be vary on OS ...
+    await enable();
+    console.log(`registered for autostart? ${await isEnabled()}`);
+    // disable();
+    //end.
+  };
+
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState()
 
@@ -36,6 +50,9 @@ function App() {
         </button>
         <button onClick={() => callCrash()}>
           Crash function
+        </button>
+        <button onClick={() => auto_start()}>
+          Auto-start
         </button>
         <p>
           Edit <code>src/App.jsx</code> and save to test HMR

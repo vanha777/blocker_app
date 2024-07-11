@@ -7,6 +7,7 @@ use std::{env, thread};
 use tauri::SystemTray;
 use tauri::{api::process::restart, Env, Manager};
 use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+use tauri_plugin_autostart::MacosLauncher;
 // fn restart_application() {
 //     Command::new(env::current_exe().unwrap())
 //         .spawn()
@@ -41,6 +42,10 @@ fn main() {
     }));
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--flag1", "--flag2"]), /* arbitrary number of args to pass to your app */
+        ))
         .setup(|app| {
             // if conditon updates detect
             // ex:
