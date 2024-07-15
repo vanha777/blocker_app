@@ -73,3 +73,21 @@ cargo tauri build --target universal-apple-darwin
 ### Windows Installer
 // todo
 * Updating ...
+
+### config file Location
+
+* targets macOs:
+```sh
+/Users/<YourUsername>/Library/Application Support/<YourAppName>/config.json
+```
+
+* targets Linux:
+```sh
+/home/<YourUsername>/.config/<YourAppName>/config.json
+```
+
+* targets windows:
+```sh
+C:\Users\<YourUsername>\AppData\Roaming\<YourAppName>\config.json
+```
+
