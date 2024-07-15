@@ -1,10 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, read_to_string, File};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::{exit, Command};
@@ -16,6 +17,12 @@ use tauri::{api::process::restart, Env, Manager};
 use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 use tauri_plugin_autostart::MacosLauncher;
 use uuid::Uuid;
+
+// Define a static mutable variable to hold config_dir
+lazy_static! {
+    static ref CONFIG_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+    static ref APP_ENV: Mutex<Option<Env>> = Mutex::new(None);
+}
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Config {
@@ -79,7 +86,7 @@ fn main() {
             let config_dir = config_dir()
                 .expect("Failed to get config directory")
                 .join(app_name);
-            println!("app.env {:?}", config_dir);
+            println!("Debug: Finding local config file ... {:?}", config_dir);
             // Create config_dir if not already exist
             create_dir_all(&config_dir).expect("Failed to create config directory");
             let config_file_path = config_dir.join("config.json");
@@ -100,6 +107,7 @@ fn main() {
                     std::fs::write(&config_file_path, config_content)
                         .expect("Failed to write default config file");
                     config = default_config;
+                    let _ = setup_dir(config_file_path, app.env());
                 }
                 false => {
                     println!("Debug: Reading config file...");
@@ -121,11 +129,11 @@ fn main() {
                         e
                     })?;
                     config = existing_config;
-                    // check 4 updates
-                    if check_update(config_file_path, config) {
-                        restart(&app.env());
-                    }
-                }
+                    let _ = setup_dir(config_file_path, app.env());
+                } // check 4 updates
+                  //   if check_update(config_file_path, config) {
+                  //       restart(&app.env());
+                  //   }
             }
             Ok(())
         })
@@ -170,7 +178,7 @@ fn main() {
             },
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![greet, crash])
+        .invoke_handler(tauri::generate_handler![greet, crash, read_config, login])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 event.window().hide().unwrap();
@@ -215,10 +223,30 @@ fn restart_application(restart_mutex: &Arc<Mutex<RefCell<()>>>) {
         // Wait for the main thread to exit gracefully
         // Add any necessary cleanup logic here
 
-        // Restart the application
-        Command::new(env::current_exe().unwrap())
-            .spawn()
-            .expect("Failed to restart application");
+        // // Restart the application
+        // Command::new(env::current_exe().unwrap())
+        //     .spawn()
+        //     .expect("Failed to restart application");
+        // FE request
+        let lock = match APP_ENV
+            .lock()
+            .map_err(|e| format!("Mutex lock error: {:?}", e))
+        {
+            Ok(x) => x,
+            Err(e) => {
+                println!("Debug: Unable to restart application: {:?}", e);
+                std::process::exit(0);
+            }
+        };
+        match &*lock {
+            Some(add_dir) => restart(add_dir),
+            _ => {
+                // // Restart the application manually
+                // Command::new(env::current_exe().unwrap())
+                //     .spawn()
+                //     .expect("Failed to restart application");
+            }
+        }
         exit(0); // or exit(1) depending on your needs
     });
     // exit gracegully
@@ -252,4 +280,70 @@ fn crash() -> String {
     // let parsed_finger = "finger".parse::<i32>().unwrap(); // Attempt to parse and immediately unwrap
     // format!("Parsed finger: {}", parsed_finger)
     panic!("Normal panic");
+}
+
+#[tauri::command]
+fn read_config() -> Result<Config, String> {
+    // FE request
+    let lock = CONFIG_DIR
+        .lock()
+        .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+    match &*lock {
+        Some(config_dir) => {
+            println!("Debug: Reading config file...");
+            // Read the config file
+            let mut file = File::open(config_dir)
+                .map_err(|e| format!("Failed to open config file: {:?}", e))?;
+
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .map_err(|e| format!("Failed to open config file: {:?}", e))?;
+
+            let existing_config: Config =
+                from_str(&contents).map_err(|e| format!("Failed to open config file: {:?}", e))?;
+
+            //check if session_id is valid
+
+            // check 4 updates
+            // under construction
+            // if check_update(config_dir, existing_config) {
+            //     let restart_mutex = restart_mutex.clone();
+            //     move |panic_info| {
+            //         println!("Debug: Application panicked: {:?}", panic_info);
+            //         restart_application(&restart_mutex);
+            //     }
+            // }
+
+            Ok(existing_config)
+        }
+        None => Err("Config directory not set".to_string()),
+    }
+}
+
+#[tauri::command]
+fn login(username: String, password: String) -> Result<Config, String> {
+    match (username.as_str(), password.as_str()) {
+        ("pharmacies1", "strongroomai") => {
+            // login -> send to cloud config file
+
+            // cloud return session_id, update require ...
+
+            //return latest config with session_id
+            let res = read_config()?;
+            Ok(res)
+        }
+        _ => Err(format!("Invalid Credentials")),
+    }
+}
+
+fn setup_dir(config_path: PathBuf, app_path: Env) -> Result<(), String> {
+    let mut lock = CONFIG_DIR
+        .lock()
+        .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+    *lock = Some(config_path);
+    let mut lock = APP_ENV
+        .lock()
+        .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+    *lock = Some(app_path);
+    Ok(())
 }
