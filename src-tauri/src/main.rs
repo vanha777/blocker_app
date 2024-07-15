@@ -233,18 +233,25 @@ fn restart_application(restart_mutex: &Arc<Mutex<RefCell<()>>>) {
             .map_err(|e| format!("Mutex lock error: {:?}", e))
         {
             Ok(x) => x,
-            Err(e) => {
-                println!("Debug: Unable to restart application: {:?}", e);
-                std::process::exit(0);
+            Err(_e) => {
+                // // Restart the application manually
+                Command::new(env::current_exe().unwrap())
+                    .spawn()
+                    .expect("Failed to restart application");
+                exit(0);
             }
         };
         match &*lock {
-            Some(add_dir) => restart(add_dir),
+            Some(add_dir) =>
+            // Restart with apps env
+            {
+                restart(add_dir)
+            }
             _ => {
                 // // Restart the application manually
-                // Command::new(env::current_exe().unwrap())
-                //     .spawn()
-                //     .expect("Failed to restart application");
+                Command::new(env::current_exe().unwrap())
+                    .spawn()
+                    .expect("Failed to restart application");
             }
         }
         exit(0); // or exit(1) depending on your needs
