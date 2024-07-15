@@ -4,9 +4,6 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import { invoke } from '@tauri-apps/api'
 import { enable, isEnabled, disable } from "tauri-plugin-autostart-api";
-import Integration from './components/integration/Integration'
-import Sidebar from './components/sidebar/sidebar'
-import MobileMenu from './components/mobileMenu/mobileMenu'
 
 function App() {
 
@@ -21,7 +18,7 @@ function App() {
     // disable();
     //end.
   };
-  const [activeButton, setActiveButton] = useState(1);
+
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState()
   const [config, setConfig] = useState()
@@ -45,18 +42,7 @@ function App() {
 
   return (
     <>
-      <div className="flex min-h-screen"> {/* Ensure the flex container covers full height */}
-        {/* <div className='fixed left-0 top-0 h-screen w-64 bg-gray-100 text-white'>
-        <Sidebar />
-        </div> */}
-        <MobileMenu activeButton={activeButton} setActiveButton={setActiveButton} />
-
-        <div className="flex-1 flex flex-col overflow-y-auto"> {/* Flex-1 ensures this div takes up remaining space and scrolls */}
-          <Integration />
-        </div>
-      </div>
-
-      {/* <div>
+      <div>
         <a href="https://vitejs.dev" target="_blank">
           <img src={viteLogo} className="logo" alt="Vite logo" />
         </a>
@@ -64,8 +50,7 @@ function App() {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
-      <h1>This Is Banana
-      </h1>
+      <h1>Vite + React</h1>
       <div className="card">
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
@@ -89,7 +74,7 @@ function App() {
       </div>
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
-      </p> */}
+      </p>
     </>
   )
 }
