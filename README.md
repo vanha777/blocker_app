@@ -45,11 +45,11 @@ cargo tauri dev
 ## Building
 
 ### macOS Bundle
-running 
+* targets Apple silicon 
 ```sh
 rustup target add aarch64-apple-darwin
 ```
-or 
+* targets Intel-based
 ```sh
 rustup target add x86_64-apple-darwin
 ```
@@ -90,4 +90,3 @@ cargo tauri build --target universal-apple-darwin
 ```sh
 C:\Users\<YourUsername>\AppData\Roaming\<YourAppName>\config.json
 ```
-

@@ -24,7 +24,7 @@ lazy_static! {
     static ref APP_ENV: Mutex<Option<Env>> = Mutex::new(None);
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 struct Config {
     // this is a token from cloud -> required for cloud http request
     session_id: Option<String>,
@@ -34,7 +34,7 @@ struct Config {
     api_config: Option<HashMap<String, Vec<ApiConfig>>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct ApiConfig {
     url: Option<String>,
     method: Option<String>,
@@ -81,7 +81,7 @@ fn main() {
         ))
         .setup(|app| {
             println!("Debug: Setting up application ...");
-            let mut config = Config::default();
+            // let mut config = Config::default();
             let app_name = "com.strong-extractions.dev";
             let config_dir = config_dir()
                 .expect("Failed to get config directory")
@@ -106,7 +106,7 @@ fn main() {
                         .expect("Failed to serialize default config");
                     std::fs::write(&config_file_path, config_content)
                         .expect("Failed to write default config file");
-                    config = default_config;
+                    // config = default_config;
                     let _ = setup_dir(config_file_path, app.env());
                 }
                 false => {
@@ -124,16 +124,13 @@ fn main() {
                         e
                     })?;
 
-                    let existing_config: Config = from_str(&contents).map_err(|e| {
-                        eprintln!("Failed to parse config file: {:?}", e);
-                        e
-                    })?;
-                    config = existing_config;
+                    // let existing_config: Config = from_str(&contents).map_err(|e| {
+                    //     eprintln!("Failed to parse config file: {:?}", e);
+                    //     e
+                    // })?;
+                    // config = existing_config;
                     let _ = setup_dir(config_file_path, app.env());
-                } // check 4 updates
-                  //   if check_update(config_file_path, config) {
-                  //       restart(&app.env());
-                  //   }
+                }
             }
             Ok(())
         })
@@ -178,7 +175,13 @@ fn main() {
             },
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![greet, crash, read_config, login])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            crash,
+            read_config,
+            login,
+            config_update
+        ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 event.window().hide().unwrap();
@@ -218,16 +221,11 @@ fn main() {
 fn restart_application(restart_mutex: &Arc<Mutex<RefCell<()>>>) {
     // Lock the mutex to synchronize restart
     let _lock = restart_mutex.lock().unwrap();
+
     // Spawn a new thread to handle the restart
     thread::spawn(move || {
         // Wait for the main thread to exit gracefully
         // Add any necessary cleanup logic here
-
-        // // Restart the application
-        // Command::new(env::current_exe().unwrap())
-        //     .spawn()
-        //     .expect("Failed to restart application");
-        // FE request
         let lock = match APP_ENV
             .lock()
             .map_err(|e| format!("Mutex lock error: {:?}", e))
@@ -256,7 +254,8 @@ fn restart_application(restart_mutex: &Arc<Mutex<RefCell<()>>>) {
         }
         exit(0); // or exit(1) depending on your needs
     });
-    // exit gracegully
+
+    // main thread exit gracegully
     std::process::exit(0);
 }
 
@@ -265,21 +264,30 @@ fn greet(name: &str) -> String {
     format!("Hello, {}!", name)
 }
 
-#[tauri::command]
-fn check_update(config_dir: PathBuf, config: Config) -> bool {
-    // updating config file ......
-    println!("Debug: Sending config files to cloud and check for update ...");
-    println!("Debug: No update required ...");
-    config_update();
-    false
-}
+// #[tauri::command]
+// fn check_update(config: Config) -> Result<Config, String> {
+//     // updating config file ......
+//     match config_update(config.clone()) {
+//         Ok(x) => {
+//             println!("Debug: Sending config files to cloud and check for update ...");
+//             Ok(x)
+//         }
+//         Err(e) => Err(format!("Failed to update")),
+//     }
+// }
 
 #[tauri::command]
-fn config_update() -> Result<i32, String> {
-    // updating config file ......
-    println!("Debug: Downloading config file ...");
-    println!("Debug: Parsing config file ...");
-    Ok(200)
+fn config_update(config: Config) -> Result<Config, String> {
+    match config.session_id.as_ref() {
+        Some(x) => {
+            println!("Debug: Downloading config file ...");
+            println!("Debug: Parsing config file ...");
+            //save to local file
+            // then return to FE
+            Ok(config)
+        }
+        None => Err(format!("Login required")),
+    }
 }
 
 #[tauri::command]
@@ -309,18 +317,6 @@ fn read_config() -> Result<Config, String> {
             let existing_config: Config =
                 from_str(&contents).map_err(|e| format!("Failed to open config file: {:?}", e))?;
 
-            //check if session_id is valid
-
-            // check 4 updates
-            // under construction
-            // if check_update(config_dir, existing_config) {
-            //     let restart_mutex = restart_mutex.clone();
-            //     move |panic_info| {
-            //         println!("Debug: Application panicked: {:?}", panic_info);
-            //         restart_application(&restart_mutex);
-            //     }
-            // }
-
             Ok(existing_config)
         }
         None => Err("Config directory not set".to_string()),
@@ -331,12 +327,12 @@ fn read_config() -> Result<Config, String> {
 fn login(username: String, password: String) -> Result<Config, String> {
     match (username.as_str(), password.as_str()) {
         ("pharmacies1", "strongroomai") => {
-            // login -> send to cloud config file
-
-            // cloud return session_id, update require ...
-
             //return latest config with session_id
-            let res = read_config()?;
+            let session_id = Uuid::new_v4().to_string();
+            let mut res = read_config()?;
+            res.session_id = Some(session_id);
+            // modify session_id and save to local file
+
             Ok(res)
         }
         _ => Err(format!("Invalid Credentials")),

@@ -21,6 +21,7 @@ function App() {
 
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState()
+  const [config, setConfig] = useState()
 
   const callMessage = () => {
     invoke("greet", { name: "Roman" }).then((response) => setMessage(response))
@@ -28,6 +29,15 @@ function App() {
 
   const callCrash = () => {
     invoke("crash").then((response) => setMessage(response))
+  };
+
+  const callReadConfig = () => {
+    invoke("read_config").then((response) => {
+      setConfig(response);
+    }).catch((error) => {
+      console.error('Error invoking read_config:', error);
+      // setConfig('Failed to read config'); // or handle error as needed
+    });
   };
 
   return (
@@ -53,6 +63,10 @@ function App() {
         </button>
         <button onClick={() => auto_start()}>
           Auto-start
+        </button>
+        <button onClick={() => callReadConfig()}>
+          Config File : {JSON.stringify(config)}
+          Read Config
         </button>
         <p>
           Edit <code>src/App.jsx</code> and save to test HMR
