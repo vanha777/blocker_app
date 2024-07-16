@@ -1,6 +1,6 @@
 import { useState } from "react"
 // import { useDispatch } from "react-redux"
-import TitleCard from "./TitleCard"
+import TitleCard from "../TitleCard"
 // import { showNotification } from "./headerSlice"
 
 

@@ -2,43 +2,23 @@ import React from 'react';
 import { useState } from 'react';
 
 
-const Login = () => {
+const Login = ({ user, setUser }) => {
+    const login = () => {
+        //invoke
+        // if success
+        setUser(true)
+    }
 
     return (
         <div className="card lg:card-side bg-base-100 shadow-xl">
             <figure>
-                {/* <img
-                    src="https://img.daisyui.com/images/stock/photo-1494232410401-ad00d5433cfa.jpg"
-                    alt="Album" /> */}
-                {/* <video controls autoPlay muted>
-                    <source src="example.mov" type="video/mp4" />
-                    Your browser does not support the video tag.
-                </video> */}
-                <video autoPlay muted className="w-full h-full">
-                    <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
+                <video autoPlay loop muted className="w-[400px] h-[400px]" >
+                    <source src="https://eazypic.s3.ap-southeast-4.amazonaws.com/5877514_3d_Abstract_1920x1080.mp4" type="video/mp4" />
                     Your browser does not support the video tag.
                 </video>
             </figure>
             <div className="card-body">
-                {/* <h2 className="card-title">New album is released!</h2>
-                <p>Click the button to listen on Spotiwhy app.</p>
-                <div className="card-actions justify-end">
-                    <button className="btn btn-primary">Listen</button>
-                </div> */}
-                <label className="input input-bordered flex items-center gap-2">
-                    <input type="text" className="grow" placeholder="Search" />
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                        className="h-4 w-4 opacity-70">
-                        <path
-                            fillRule="evenodd"
-                            d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
-                            clipRule="evenodd" />
-                    </svg>
-                </label>
-                <label className="input input-bordered flex items-center gap-2">
+                {/* <label className="input input-bordered flex items-center gap-2">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 16 16"
@@ -50,7 +30,7 @@ const Login = () => {
                             d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
                     </svg>
                     <input type="text" className="grow" placeholder="Email" />
-                </label>
+                </label> */}
                 <label className="input input-bordered flex items-center gap-2">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -73,8 +53,9 @@ const Login = () => {
                             d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z"
                             clipRule="evenodd" />
                     </svg>
-                    <input type="password" className="grow" value="password" />
+                    <input type="password" className="grow" />
                 </label>
+                <button onClick={() => login()} className="btn-primary btn no-animation mt-16">Login</button>
             </div>
         </div>
     )

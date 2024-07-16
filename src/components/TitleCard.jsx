@@ -1,4 +1,4 @@
-import Subtitle from "../typo/Subtitle"
+import Subtitle from "./typo/Subtitle"
 
   
   function TitleCard({title, children, topMargin, TopSideButtons}){
