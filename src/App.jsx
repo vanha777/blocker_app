@@ -7,6 +7,7 @@ import { enable, isEnabled, disable } from "tauri-plugin-autostart-api";
 import Integration from './components/integration/Integration'
 import Sidebar from './components/sidebar/sidebar'
 import MobileMenu from './components/mobileMenu/mobileMenu'
+import Login from './components/login/login'
 
 function App() {
 
@@ -52,12 +53,13 @@ function App() {
 
   return (
     <>
-      <div>
+       <div className="flex flex-col min-h-screen">
         <MobileMenu activeButton={activeButton} setActiveButton={setActiveButton} />
 
         {!user &&
           <div className="flex items-center justify-center pb-10">
-            <Integration />
+            <Login/>
+            {/* <Integration /> */}
           </div>
         }
 
