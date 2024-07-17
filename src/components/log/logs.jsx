@@ -43,8 +43,7 @@ const BILLS = [
 
 ]
 
-function Logs() {
-
+function Logs({ config }) {
 
     const [bills, setBills] = useState(BILLS)
 
@@ -54,6 +53,14 @@ function Logs() {
         if (status === "Failed") return <div className="badge badge-error">{status}</div>
         else return <div className="badge badge-ghost">{status}</div>
     }
+
+    const callEndpoint = (name) => {
+        invoke("fetch_data").then((response) => setMessage(response))
+    };
+
+    const callCloudServer = () => {
+        invoke("send_data").then((response) => setMessage(response))
+    };
 
     return (
         <div className="w-full h-full overflow-y-auto">
@@ -92,6 +99,21 @@ function Logs() {
                     </table>
                 </div>
             </TitleCard>
+            <div className="p-4">
+            <div className="grid grid-cols-4 gap-4">
+                {config.api_config.map((l, k) => (
+                    <button
+                        key={k}
+                        onClick={() => callEndpoint(l.name)}
+                        // className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 ease-in-out"
+                          className="btn-primary btn py-2 px-4 rounded"
+                    >
+                        Call {l.name} Endpoint
+                    </button>
+                ))}
+            </div>
+            </div>
+           
         </div>
     )
 }

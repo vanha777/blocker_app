@@ -18,6 +18,8 @@ use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem}
 use tauri_plugin_autostart::MacosLauncher;
 use uuid::Uuid;
 
+mod handler;
+
 // Define a static mutable variable to hold config_dir
 lazy_static! {
     static ref CONFIG_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
@@ -31,7 +33,8 @@ struct Config {
     cloud_url: Option<String>,
     client_id: Option<String>,
     version: Option<u8>,
-    api_config: Option<HashMap<String, Vec<ApiConfig>>>,
+    // api_config: Option<HashMap<String, Vec<ApiConfig>>>,
+    api_config: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -47,6 +50,33 @@ struct ApiConfig {
 //         .expect("Failed to restart application");
 //     exit(0); // or exit(1) depending on your needs
 // }
+
+#[tauri::command]
+async fn fetch_data(api_name: &str) -> Result<String, String> {
+    // get config file
+    // match name -> trigger api call
+    let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
+    let query = [("fromDate", "2024-06-01"), ("toDate", "2024-06-30")];
+    let subscription_key = "963f415e031a4b32a4a1915e26e085ca";
+    let fred_api_key = "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=";
+
+    let res = handler::send_query(url, &query, subscription_key, fred_api_key)
+        .await
+        .map_err(|e| format!("Error fetching data: {:?}", e))?;
+    Ok(res)
+}
+
+#[tauri::command]
+async fn send_data() -> Result<(), String> {
+    let url = "http://127.0.0.1:5173/upload";
+    let subscription_key = "your_subscription_key";
+    let fred_api_key = "your_fred_api_key";
+    let dummy_payload = r#"{"key1": "value1", "key2": "value2"}"#;
+
+    handler::send_dummy_data(url, subscription_key, fred_api_key, dummy_payload)
+        .await
+        .map_err(|e| format!("Error sending data: {:?}", e))
+}
 
 fn main() {
     println!("Debug: Starting Applcation ...");
@@ -180,7 +210,9 @@ fn main() {
             crash,
             read_config,
             login,
-            config_update
+            config_update,
+            fetch_data,
+            send_data
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -280,11 +312,24 @@ fn greet(name: &str) -> String {
 fn config_update(config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
-            println!("Debug: Downloading config file ...");
-            println!("Debug: Parsing config file ...");
+            //send to cloud check session_id for permission
+            // .....
             //save to local file
-            // then return to FE
-            Ok(config)
+            // modify session_id and save to local file
+            let lock = CONFIG_DIR
+                .lock()
+                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+            match &*lock {
+                Some(config_dir) => {
+                    println!("Debug: Updating config file...");
+                    let config_content = serde_json::to_string_pretty(&config)
+                        .expect("Failed to serialize default config");
+                    std::fs::write(&config_dir, config_content)
+                        .expect("Failed to write default config file");
+                    Ok(config)
+                }
+                None => Err("Config directory not set".to_string()),
+            }
         }
         None => Err(format!("Login required")),
     }
@@ -324,16 +369,63 @@ fn read_config() -> Result<Config, String> {
 }
 
 #[tauri::command]
-fn login(username: String, password: String) -> Result<Config, String> {
-    match (username.as_str(), password.as_str()) {
+fn login(username: &str, password: &str) -> Result<Config, String> {
+    match (username, password) {
         ("pharmacies1", "strongroomai") => {
             //return latest config with session_id
+            // this is just randomly -> should be return from cloud
             let session_id = Uuid::new_v4().to_string();
             let mut res = read_config()?;
             res.session_id = Some(session_id);
+            res.version = Some(1);
+            res.cloud_url = Some("http://127.0.0.1:5173".to_string());
+            res.api_config = Some(vec![
+                serde_json::json!(
+                    {
+                        "name": "Fred",
+                        "icon": "https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png",
+                        "isActive": false,
+                        "description": "Fred IT Group works with third-party vendors who require access to pharmacy data held within Fred NXT databases or who require access to real-time dispense and/or point-of-sale events for the creation of Fred NXT Integrations.",
+                        "subscription_key": "963f415e031a4b32a4a1915e26e085ca",
+                        "api_key": "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU="
+                      }
+                ),
+                serde_json::json!(
+                    {
+                        "name": "Hubspot",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968872.png",
+                        "isActive": true,
+                        "description": "American developer and marketer of software products for inbound marketing, sales, and customer service.",
+                        "subscription_key": "",
+                        "api_key": ""
+                      }
+                ),
+                serde_json::json!(
+                    {
+                        "name": "Salesforce",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968880.png",
+                        "isActive": true,
+                        "description": "It provides customer relationship management software and applications focused on sales, customer service, marketing automation.",
+                        "subscription_key": "",
+                        "api_key": ""
+                      }
+                ),
+            ]);
             // modify session_id and save to local file
-
-            Ok(res)
+            let lock = CONFIG_DIR
+                .lock()
+                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+            match &*lock {
+                Some(config_dir) => {
+                    println!("Debug: Updating config file...");
+                    let config_content = serde_json::to_string_pretty(&res)
+                        .expect("Failed to serialize default config");
+                    std::fs::write(&config_dir, config_content)
+                        .expect("Failed to write default config file");
+                    Ok(res)
+                }
+                None => Err("Config directory not set".to_string()),
+            }
         }
         _ => Err(format!("Invalid Credentials")),
     }

@@ -10,6 +10,7 @@ import MobileMenu from './components/mobileMenu/mobileMenu'
 import Login from './components/login/login'
 import Logs from './components/log/logs'
 import ProfileSettings from './components/profileSetting/ProfileSetting'
+import Loading from './components/loading/loading'
 
 function App() {
 
@@ -24,9 +25,11 @@ function App() {
     // disable();
     //end.
   };
+  const [loading, setLoading] = useState(true);
   const [activeButton, setActiveButton] = useState(1);
-  const [user, setUser] = useState(false);
+  const [config, setConfig] = useState(null);
   const [save, setSave] = useState(false);
+  const [user, setUser] = useState(false);
   const [tab, setTab] = useState(1);
   const changeTab = (index) => {
     console.log("changing tab")
@@ -34,7 +37,7 @@ function App() {
   };
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState()
-  const [config, setConfig] = useState()
+  // const [config, setConfig] = useState()
 
   const callMessage = () => {
     invoke("greet", { name: "Roman" }).then((response) => setMessage(response))
@@ -44,41 +47,51 @@ function App() {
     invoke("crash").then((response) => setMessage(response))
   };
 
-  const callReadConfig = () => {
-    invoke("read_config").then((response) => {
-      setConfig(response);
-    }).catch((error) => {
-      console.error('Error invoking read_config:', error);
-      // setConfig('Failed to read config'); // or handle error as needed
-    });
-  };
+  // const callReadConfig = () => {
+  //   invoke("read_config").then((response) => {
+  //     setConfig(response);
+  //   }).catch((error) => {
+  //     console.error('Error invoking read_config:', error);
+  //     // setConfig('Failed to read config'); // or handle error as needed
+  //   });
+  // };
 
   return (
     <div className="flex flex-col min-h-screen">
-      <MobileMenu activeButton={activeButton} setActiveButton={setActiveButton} />
 
-      {!user &&
+
+      {loading &&
         <div className="h-screen w-screen flex items-center justify-center">
-          <Login user={user} setUser={setUser} />
+          <Loading setUser={setUser }setLoading={setLoading} setConfig={setConfig} />
         </div>
       }
 
-      {user && activeButton === 1 &&
+      {!loading &&
+        <MobileMenu activeButton={activeButton} setActiveButton={setActiveButton} />
+      }
+
+      {!user && !loading && config &&
+        <div className="h-screen w-screen flex items-center justify-center">
+          <Login user={user} setUser={setUser} config={config} setConfig={setConfig} />
+        </div>
+      }
+
+      {config && user && activeButton === 1 &&
         <div className="flex items-center justify-center pb-10">
-          <Integration />
+          <Integration config={config} setConfig={setConfig} />
         </div>
       }
-      {user && activeButton === 2 &&
-        <div className="mt-16 h-screen w-screen flex items-center justify-center">
-          <Logs />
+      {config && user && activeButton === 2 &&
+        <div className="mt-6 h-screen w-screen flex items-center justify-center">
+          <Logs config={config} />
         </div>
       }
-      {user && activeButton === 3 &&
-        <div className="h-screen w-screen flex items-center justify-center">
-          <ProfileSettings />
+      {config && user && activeButton === 3 &&
+        <div className="pt-8 pb-8 h-screen w-screen flex items-center justify-center overflow-auto">
+          <ProfileSettings config={config} />
         </div>
       }
-      {user && !save && tab == 1 &&
+      {config && !save && tab == 1 &&
         <div className="toast toast-top toast-end space-y-2">
           <div className="alert alert-info p-4">
             <div className="flex flex-row items-center space-x-2">
@@ -91,7 +104,7 @@ function App() {
           </div>
         </div>
       }
-      {user && !save && tab == 2 &&
+      {config && !save && tab == 2 &&
         <div onClick={() => changeTab(1)} className="toast toast-top toast-end space-y-2">
           <span className="loading loading-infinity loading-lg "></span>
         </div>
@@ -131,11 +144,7 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p> */}
-
     </div>
-
-
-
   )
 }
 
