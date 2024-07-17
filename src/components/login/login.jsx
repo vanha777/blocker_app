@@ -17,6 +17,10 @@ const Login = ({ user, setUser }) => {
         invoke("fetch_data").then((response) => setMessage(response))
     };
 
+    const callCloudServer = () => {
+        invoke("send_data").then((response) => setMessage(response))
+    };
+
     return (
         <div className="card lg:card-side bg-base-100 shadow-xl">
             <figure>
@@ -64,7 +68,8 @@ const Login = ({ user, setUser }) => {
                     <input type="password" className="grow" placeholder="Password" />
                 </label>
                 <button onClick={() => login()} className="btn-primary btn no-animation mt-16">Login</button>
-                <button onClick={() => callEndpoint()} className="btn-primary btn no-animation mt-16">Endpoint {message}</button>
+                <button onClick={() => callEndpoint()} className="btn-primary btn no-animation mt-4">Call Fred Endpoint</button>
+                <button onClick={() => callCloudServer()} className="btn-primary btn no-animation mt-4">Call Cloud Server</button>
             </div>
         </div>
     )

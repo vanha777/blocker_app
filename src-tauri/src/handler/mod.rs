@@ -32,3 +32,22 @@ fn construct_headers(subscription_key: &str, fred_api_key: &str) -> HeaderMap {
 
     headers
 }
+
+pub async fn send_dummy_data(url: &str, subscription_key: &str, fred_api_key: &str, payload: &str) -> Result<(), Box<dyn Error>> {
+    let client = reqwest::Client::new();
+
+    let headers = construct_headers(subscription_key, fred_api_key);
+
+    let response = client
+        .post(url)
+        .headers(headers)
+        .body(payload.to_string())
+        .send()
+        .await?
+        .text()
+        .await?;
+
+    println!("Response data: {}", response);
+
+    Ok(())
+}

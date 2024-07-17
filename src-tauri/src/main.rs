@@ -62,6 +62,18 @@ async fn fetch_data() -> Result<(), String> {
         .map_err(|e| format!("Error fetching data: {:?}", e))
 }
 
+#[tauri::command]
+async fn send_data() -> Result<(), String> {
+    let url = "http://127.0.0.1:5173/upload";
+    let subscription_key = "your_subscription_key";
+    let fred_api_key = "your_fred_api_key";
+    let dummy_payload = r#"{"key1": "value1", "key2": "value2"}"#;
+
+    handler::send_dummy_data(url, subscription_key, fred_api_key, dummy_payload)
+        .await
+        .map_err(|e| format!("Error sending data: {:?}", e))
+}
+
 
 fn main() {
     println!("Debug: Starting Applcation ...");
@@ -196,7 +208,8 @@ fn main() {
             read_config,
             login,
             config_update,
-            fetch_data
+            fetch_data,
+            send_data
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
