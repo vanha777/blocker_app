@@ -7,7 +7,7 @@ import InputText from './InputText'
 import TextAreaInput from './TextAreaInput'
 import ToogleInput from './ToogleInput'
 
-function ProfileSettings() {
+function ProfileSettings({config}) {
 
     const [isSync, setIsSync] = useState(false);
 
@@ -20,6 +20,7 @@ function ProfileSettings() {
     }
 
     const updateFormValue = ({ updateType, value }) => {
+        console.log(value)
         console.log(updateType)
     }
 
@@ -34,11 +35,11 @@ function ProfileSettings() {
             <TitleCard title="Configuration" topMargin="mt-2">
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InputText labelTitle="Session Id" defaultValue="Alex" updateFormValue={updateFormValue} />
-                    <InputText labelTitle="Cloud Url" defaultValue="alex@dashwind.com" updateFormValue={updateFormValue} />
-                    <InputText labelTitle="Client Id" defaultValue="UI/UX Designer" updateFormValue={updateFormValue} />
-                    <InputText labelTitle="Version" defaultValue="California" updateFormValue={updateFormValue} />
-                    <TextAreaInput labelTitle="Api support" defaultValue="Doing what I love, part time traveller" updateFormValue={updateFormValue} />
+                    <InputText labelTitle="Session Id" defaultValue={config.session_id} updateFormValue={updateFormValue} updateType="session_id" />
+                    <InputText labelTitle="Cloud Url" defaultValue={config.cloud_url} updateFormValue={updateFormValue} updateType="cloud_url" />
+                    <InputText labelTitle="Client Id" defaultValue={config.client_id} updateFormValue={updateFormValue} updateType="client_id" />
+                    <InputText labelTitle="Version" defaultValue={config.version} updateFormValue={updateFormValue} updateType="version" />
+                    <TextAreaInput labelTitle="Api support" defaultValue={config.api_config} updateFormValue={updateFormValue} updateType="api_config" />
                 </div>
                 <div className="divider" ></div>
 

@@ -55,6 +55,14 @@ function Logs() {
         else return <div className="badge badge-ghost">{status}</div>
     }
 
+    const callEndpoint = () => {
+        invoke("fetch_data").then((response) => setMessage(response))
+    };
+
+    const callCloudServer = () => {
+        invoke("send_data").then((response) => setMessage(response))
+    };
+
     return (
         <div className="w-full h-full overflow-y-auto">
 
@@ -92,6 +100,10 @@ function Logs() {
                     </table>
                 </div>
             </TitleCard>
+            <div className="">
+                <button onClick={() => callEndpoint()} className="btn-primary btn no-animation mt-4">Call Fred Endpoint</button>
+                {/* <button onClick={() => callCloudServer()} className="btn-primary btn no-animation mt-4">Call Cloud Server</button> */}
+            </div>
         </div>
     )
 }

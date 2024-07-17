@@ -33,7 +33,8 @@ struct Config {
     cloud_url: Option<String>,
     client_id: Option<String>,
     version: Option<u8>,
-    api_config: Option<HashMap<String, Vec<ApiConfig>>>,
+    // api_config: Option<HashMap<String, Vec<ApiConfig>>>,
+    api_config: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -73,7 +74,6 @@ async fn send_data() -> Result<(), String> {
         .await
         .map_err(|e| format!("Error sending data: {:?}", e))
 }
-
 
 fn main() {
     println!("Debug: Starting Applcation ...");
@@ -309,11 +309,24 @@ fn greet(name: &str) -> String {
 fn config_update(config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
-            println!("Debug: Downloading config file ...");
-            println!("Debug: Parsing config file ...");
+            //send to cloud check session_id for permission
+            // .....
             //save to local file
-            // then return to FE
-            Ok(config)
+            // modify session_id and save to local file
+            let lock = CONFIG_DIR
+                .lock()
+                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+            match &*lock {
+                Some(config_dir) => {
+                    println!("Debug: Updating config file...");
+                    let config_content = serde_json::to_string_pretty(&config)
+                        .expect("Failed to serialize default config");
+                    std::fs::write(&config_dir, config_content)
+                        .expect("Failed to write default config file");
+                    Ok(config)
+                }
+                None => Err("Config directory not set".to_string()),
+            }
         }
         None => Err(format!("Login required")),
     }
@@ -353,16 +366,31 @@ fn read_config() -> Result<Config, String> {
 }
 
 #[tauri::command]
-fn login(username: String, password: String) -> Result<Config, String> {
-    match (username.as_str(), password.as_str()) {
+fn login(username: &str, password: &str) -> Result<Config, String> {
+    match (username, password) {
         ("pharmacies1", "strongroomai") => {
             //return latest config with session_id
+            // this is just randomly -> should be return from cloud
             let session_id = Uuid::new_v4().to_string();
             let mut res = read_config()?;
             res.session_id = Some(session_id);
+            res.version = Some(1);
+            res.cloud_url = Some("http://127.0.0.1:5173".to_string());
             // modify session_id and save to local file
-
-            Ok(res)
+            let lock = CONFIG_DIR
+                .lock()
+                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+            match &*lock {
+                Some(config_dir) => {
+                    println!("Debug: Updating config file...");
+                    let config_content = serde_json::to_string_pretty(&res)
+                        .expect("Failed to serialize default config");
+                    std::fs::write(&config_dir, config_content)
+                        .expect("Failed to write default config file");
+                    Ok(res)
+                }
+                None => Err("Config directory not set".to_string()),
+            }
         }
         _ => Err(format!("Invalid Credentials")),
     }
