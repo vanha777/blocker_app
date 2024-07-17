@@ -52,15 +52,18 @@ struct ApiConfig {
 // }
 
 #[tauri::command]
-async fn fetch_data() -> Result<(), String> {
+async fn fetch_data(api_name: &str) -> Result<String, String> {
+    // get config file
+    // match name -> trigger api call
     let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
     let query = [("fromDate", "2024-06-01"), ("toDate", "2024-06-30")];
     let subscription_key = "963f415e031a4b32a4a1915e26e085ca";
     let fred_api_key = "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=";
 
-    handler::send_query(url, &query, subscription_key, fred_api_key)
+    let res = handler::send_query(url, &query, subscription_key, fred_api_key)
         .await
-        .map_err(|e| format!("Error fetching data: {:?}", e))
+        .map_err(|e| format!("Error fetching data: {:?}", e))?;
+    Ok(res)
 }
 
 #[tauri::command]
@@ -376,6 +379,38 @@ fn login(username: &str, password: &str) -> Result<Config, String> {
             res.session_id = Some(session_id);
             res.version = Some(1);
             res.cloud_url = Some("http://127.0.0.1:5173".to_string());
+            res.api_config = Some(vec![
+                serde_json::json!(
+                    {
+                        "name": "Fred",
+                        "icon": "https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png",
+                        "isActive": false,
+                        "description": "Fred IT Group works with third-party vendors who require access to pharmacy data held within Fred NXT databases or who require access to real-time dispense and/or point-of-sale events for the creation of Fred NXT Integrations.",
+                        "subscription_key": "963f415e031a4b32a4a1915e26e085ca",
+                        "api_key": "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU="
+                      }
+                ),
+                serde_json::json!(
+                    {
+                        "name": "Hubspot",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968872.png",
+                        "isActive": true,
+                        "description": "American developer and marketer of software products for inbound marketing, sales, and customer service.",
+                        "subscription_key": "",
+                        "api_key": ""
+                      }
+                ),
+                serde_json::json!(
+                    {
+                        "name": "Salesforce",
+                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968880.png",
+                        "isActive": true,
+                        "description": "It provides customer relationship management software and applications focused on sales, customer service, marketing automation.",
+                        "subscription_key": "",
+                        "api_key": ""
+                      }
+                ),
+            ]);
             // modify session_id and save to local file
             let lock = CONFIG_DIR
                 .lock()

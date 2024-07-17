@@ -1,7 +1,7 @@
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use std::error::Error;
 
-pub async fn send_query(url: &str, query: &[(&str, &str)], subscription_key: &str, fred_api_key: &str) -> Result<(), Box<dyn Error>> {
+pub async fn send_query(url: &str, query: &[(&str, &str)], subscription_key: &str, fred_api_key: &str) -> Result<String, Box<dyn Error>> {
     let client = reqwest::Client::new();
 
     let mut full_url = reqwest::Url::parse(url)?;
@@ -19,7 +19,7 @@ pub async fn send_query(url: &str, query: &[(&str, &str)], subscription_key: &st
 
     println!("Response data: {}", response);
 
-    Ok(())
+    Ok(response)
 }
 
 fn construct_headers(subscription_key: &str, fred_api_key: &str) -> HeaderMap {

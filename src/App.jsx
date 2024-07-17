@@ -76,18 +76,18 @@ function App() {
         </div>
       }
 
-      {config && activeButton === 1 &&
+      {config && user && activeButton === 1 &&
         <div className="flex items-center justify-center pb-10">
           <Integration config={config} setConfig={setConfig} />
         </div>
       }
-      {config && activeButton === 2 &&
-        <div className="mt-16 h-screen w-screen flex items-center justify-center">
-          <Logs />
+      {config && user && activeButton === 2 &&
+        <div className="mt-6 h-screen w-screen flex items-center justify-center">
+          <Logs config={config} />
         </div>
       }
-      {config && activeButton === 3 &&
-        <div className="h-screen w-screen flex items-center justify-center">
+      {config && user && activeButton === 3 &&
+        <div className="pt-8 pb-8 h-screen w-screen flex items-center justify-center overflow-auto">
           <ProfileSettings config={config} />
         </div>
       }

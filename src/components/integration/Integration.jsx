@@ -16,8 +16,18 @@ import { invoke } from '@tauri-apps/api'
 // ]
 
 function Integration({ config, setConfig }) {
-    const [integrationList, setIntegrationList] = useState(config.api_config)
 
+    useEffect(() => {
+        console.log(config);
+        // invoke("read_config").then((response) => {
+        //     setConfig(config);
+        // }).catch((err) => {
+        //     console.log("error to fetch config ", err);
+        // });
+    }, []); // Empty dependency array ensures this runs only once
+
+    const [integrationList, setIntegrationList] = useState(config.api_config || null);
+    const [newConfig, setNewConfig] = useState(config);
     const updateIntegrationStatus = (index) => {
         console.log("changing status integrations status ", index);
         let integration = integrationList[index]
@@ -40,7 +50,7 @@ function Integration({ config, setConfig }) {
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {
+                {integrationList != null &&
                     integrationList.map((i, k) => {
                         return (
                             <TitleCard key={k} title={i.name} topMargin={"mt-2"}>
