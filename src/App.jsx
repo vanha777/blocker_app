@@ -8,7 +8,7 @@ import Integration from './components/integration/Integration'
 import Sidebar from './components/sidebar/sidebar'
 import MobileMenu from './components/mobileMenu/mobileMenu'
 import Login from './components/login/login'
-import Logs from './components/logs/log'
+import Logs from './components/logs/logs'
 import ProfileSettings from './components/profileSetting/ProfileSetting'
 
 function App() {
