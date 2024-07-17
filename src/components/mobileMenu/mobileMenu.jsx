@@ -1,14 +1,14 @@
 import React from 'react';
 import { useState } from 'react';
 
-interface MobileMenuProps {
-    activeButton: number;
-    setActiveButton: (buttonIndex: number) => void;
-}
+// interface MobileMenuProps {
+//     activeButton: number;
+//     setActiveButton: (buttonIndex: number) => void;
+// }
 
-const MobileMenu: React.FC<MobileMenuProps> = ({ activeButton, setActiveButton }) => {
+const MobileMenu = ({ activeButton, setActiveButton }) => {
     // const [activeButton, setActiveButton] = useState(0);
-    const handleButtonClick = (buttonIndex: number) => {
+    const handleButtonClick = (buttonIndex) => {
         setActiveButton(buttonIndex);
     };
     // const handleSignOut = async () => {
