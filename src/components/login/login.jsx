@@ -1,13 +1,21 @@
 import React from 'react';
 import { useState } from 'react';
+import { invoke } from '@tauri-apps/api'
 
 
 const Login = ({ user, setUser }) => {
+
+    const [message, setMessage] = useState()
+
     const login = () => {
         //invoke
         // if success
         setUser(true)
     }
+
+    const callEndpoint = () => {
+        invoke("fetch_data").then((response) => setMessage(response))
+    };
 
     return (
         <div className="card lg:card-side bg-base-100 shadow-xl">
@@ -56,6 +64,7 @@ const Login = ({ user, setUser }) => {
                     <input type="password" className="grow" placeholder="Password" />
                 </label>
                 <button onClick={() => login()} className="btn-primary btn no-animation mt-16">Login</button>
+                <button onClick={() => callEndpoint()} className="btn-primary btn no-animation mt-16">Endpoint {message}</button>
             </div>
         </div>
     )

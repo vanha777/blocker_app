@@ -18,6 +18,8 @@ use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem}
 use tauri_plugin_autostart::MacosLauncher;
 use uuid::Uuid;
 
+mod handler;
+
 // Define a static mutable variable to hold config_dir
 lazy_static! {
     static ref CONFIG_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
@@ -47,6 +49,19 @@ struct ApiConfig {
 //         .expect("Failed to restart application");
 //     exit(0); // or exit(1) depending on your needs
 // }
+
+#[tauri::command]
+async fn fetch_data() -> Result<(), String> {
+    let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
+    let query = [("fromDate", "2024-06-01"), ("toDate", "2024-06-30")];
+    let subscription_key = "963f415e031a4b32a4a1915e26e085ca";
+    let fred_api_key = "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=";
+
+    handler::send_query(url, &query, subscription_key, fred_api_key)
+        .await
+        .map_err(|e| format!("Error fetching data: {:?}", e))
+}
+
 
 fn main() {
     println!("Debug: Starting Applcation ...");
@@ -180,7 +195,8 @@ fn main() {
             crash,
             read_config,
             login,
-            config_update
+            config_update,
+            fetch_data
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
