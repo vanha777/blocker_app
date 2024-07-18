@@ -1,7 +1,7 @@
 import Subtitle from "./typo/Subtitle"
 
   
-  function TitleCard({title, children, topMargin, TopSideButtons}){
+  function TitleCard({title, children, topMargin, TopSideButtons,callRefresh}){
       return(
           <div className={"card w-full p-6 bg-base-100 shadow-xl " + (topMargin || "mt-6")}>
 
@@ -11,7 +11,8 @@ import Subtitle from "./typo/Subtitle"
 
                 {/* Top side button, show only if present */}
                 {
-                    TopSideButtons && <div className="inline-block float-right">{TopSideButtons}</div>
+                    TopSideButtons && <button className="btn btn-primary float-right" onClick={() => callRefresh()}>{TopSideButtons}</button>
+                    // <button className="btn btn-primary float-right" onClick={() => updateProfile()}>Update</button>
                 }
               </Subtitle>
               

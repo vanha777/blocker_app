@@ -47,6 +47,7 @@ const BILLS = [
 function Logs({ config }) {
 
     const [bills, setBills] = useState(BILLS)
+    // const [refresh, setRefresh] = useState()
 
     const getPaymentStatus = (status) => {
         if (status === "Completed") return <div className="badge badge-success">{status}</div>
@@ -65,14 +66,16 @@ function Logs({ config }) {
         })
     };
 
-    const callCloudServer = () => {
-        invoke("send_data").then((response) => setMessage(response))
+    const callRefresh = () => {
+        // invoke("send_data").then((response) => setMessage(response))
+        console.log("this is refreshing")
     };
+
     console.log("DEBUGGG config hereeee", config);
     return (
         <div className="w-full h-full overflow-y-auto p-4 pb-8">
 
-            <TitleCard title="Logs" topMargin="mt-6">
+            <TitleCard title="Logs" topMargin="mt-6" TopSideButtons="Refresh"callRefresh={callRefresh}>
 
                 {/* Invoice list in table format loaded constant */}
                 <div className="overflow-x-auto w-full">

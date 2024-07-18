@@ -6,16 +6,17 @@ import { invoke } from '@tauri-apps/api'
 const Login = ({ user, setUser, config, setConfig }) => {
 
     const [message, setMessage] = useState()
-    const [username, setUsername] = useState('pharmacies1');
-    const [password, setPassword] = useState('strongroomai');
+    const [username, setUsername] = useState("sam");
+    const [password, setPassword] = useState("strongroomai");
 
     const login = () => {
+        console.log("Logging in");
         invoke("login", { username: username, password: password }).then((response) => {
-            console.log("Config update ",response);
+            console.log("Login response ", response);
             setConfig(response);
             setUser(true);
         }).catch((error) => {
-            console.error('Error invoking read_config:', error);
+            console.error('Error invoking login:', error);
         });
     }
 

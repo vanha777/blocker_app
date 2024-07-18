@@ -27,6 +27,7 @@ function ProfileSettings({ config, setConfig, setLoading }) {
 
     // Call API to update profile settings changes
     const updateProfile = () => {
+        console.log("updating config file ...")
         invoke("config_update", { config: config }).then((response) => {
             console.log("Config update ", response);
             setLoading(true);

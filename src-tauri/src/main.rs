@@ -1,9 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use lazy_static::lazy_static;
+use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
-use tauri::utils::config;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, read_to_string, File};
@@ -13,6 +13,7 @@ use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
 use std::{env, thread};
 use tauri::api::path::config_dir;
+use tauri::utils::config;
 use tauri::SystemTray;
 use tauri::{api::process::restart, Env, Manager};
 use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
@@ -25,6 +26,41 @@ mod handler;
 lazy_static! {
     static ref CONFIG_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
     static ref APP_ENV: Mutex<Option<Env>> = Mutex::new(None);
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+struct BcpInitRequest {
+    // this is a token from cloud -> required for cloud http request
+    r#type: String,
+    location_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+struct BcpInitResponse {
+    uuid: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+struct SetBcpRequest {
+    // this is a token from cloud -> required for cloud http request
+    document_id: String,
+    status: String,
+    message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+struct GetBcpRequest {
+    // this is a token from cloud -> required for cloud http request
+    location_id: String,
+    r#type: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+struct LoginRequest {
+    // this is a token from cloud -> required for cloud http request
+    name: String,
+    password: String,
+    company_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -76,27 +112,115 @@ struct ApiConfig {
 // }
 
 #[tauri::command]
-async fn fetch_data(integration_name: &str,endpoint_name: &str) -> Result<String, String> {
-    println!("Debug: Calling Api endpoint ... {:#?}",endpoint_name);
-    // get config file
-    // match name -> trigger api call
-    // let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
-    // let query = [("fromDate", "2024-06-01"), ("toDate", "2024-06-30")];
-    // let subscription_key = "963f415e031a4b32a4a1915e26e085ca";
-    // let fred_api_key = "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=";
-
-    let config = read_config().unwrap().api_config.unwrap();
-let integration = config
-    .iter()
-    .find(|x| x.integration_name.clone().unwrap() == integration_name.to_string()).unwrap().api.clone().unwrap(); 
-
-    let endpoint = integration.iter().find(|x|x.endpoint_name.clone().unwrap() == endpoint_name.to_string()).unwrap();
-
-    //activate endpoint
-    let res = handler::send(endpoint)
+async fn fetch_data(integration_name: &str, endpoint_name: &str) -> Result<String, String> {
+    println!("Debug: Calling Api endpoint ... {:#?}", endpoint_name);
+    //read the local config
+    let config = read_config().unwrap();
+    // create bcp
+    let client = reqwest::Client::new();
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "Authorization",
+        HeaderValue::from_str(&format!(
+            "Bearer {}",
+            config
+                .session_id
+                .as_ref()
+                .map(|x| x.clone())
+                .unwrap_or_default()
+        ))
+        .unwrap(),
+    );
+    headers.insert(
+        "Location",
+        HeaderValue::from_str(
+            &config
+                .client_id
+                .as_ref()
+                .map(|x| x.clone())
+                .unwrap_or_default(),
+        )
+        .unwrap(),
+    );
+    println!("debug 1");
+    let req = BcpInitRequest {
+        r#type: "residents_charts".to_string(),
+        location_id: config
+            .client_id
+            .as_ref()
+            .map(|x| x.clone())
+            .unwrap_or_default(),
+    };
+    let document_id = client
+        .post("http://localhost:3030/bcp/document/init")
+        .headers(headers.clone())
+        .json(&req)
+        .send()
         .await
-        .map_err(|e| format!("Error fetching data: {:?}", e))?;
-    Ok(res)
+        .map_err(|e| format!("Failed to send response of kraken {}", e.to_string()))?
+        .json::<BcpInitResponse>()
+        .await
+        .map_err(|e| format!("Failed to parse response of kraken{}", e.to_string()))?
+        .uuid;
+    println!("debug 2");
+    // return to FE and spawn an other BG job
+
+    //end.
+    let config = read_config().unwrap().api_config.unwrap();
+    let integration = config
+        .iter()
+        .find(|x| x.integration_name.clone().unwrap() == integration_name.to_string())
+        .unwrap()
+        .api
+        .clone()
+        .unwrap();
+    println!("debug 3");
+    let endpoint = integration
+        .iter()
+        .find(|x| x.endpoint_name.clone().unwrap() == endpoint_name.to_string())
+        .unwrap();
+    println!("debug 4");
+    //activate endpoint
+    match handler::send(endpoint).await {
+        Ok(x) => {
+            println!("debug 5");
+            let req = SetBcpRequest {
+                document_id,
+                status: "completed".to_string(),
+                message: None,
+            };
+            let _ = client
+                .post("http://localhost:3030/bcp/document/status")
+                .json(&req)
+                .headers(headers.clone())
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send response of kraken {}", e.to_string()))?
+                .json::<Option<i32>>()
+                .await
+                .map_err(|_x| "Failed to parse response of kraken".to_string())?;
+            Ok(x)
+        }
+        Err(e) => {
+            println!("debug 6");
+            let req = SetBcpRequest {
+                document_id,
+                status: "failed".to_string(),
+                message: Some(e.to_string()),
+            };
+            let _ = client
+                .post("http://localhost:3030/bcp/document/status")
+                .json(&req)
+                .headers(headers.clone())
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send response of kraken {}", e.to_string()))?
+                .json::<Option<i32>>()
+                .await
+                .map_err(|_x| "Failed to parse response of kraken".to_string())?;
+            Err(e.to_string())
+        }
+    }
 }
 
 #[tauri::command]
@@ -160,7 +284,7 @@ fn main() {
                     let default_config = Config {
                         session_id: None,
                         cloud_url: None,
-                        client_id: Some(Uuid::new_v4().to_string()),
+                        client_id: None,
                         version: Some(0),
                         api_config: None,
                     };
@@ -345,29 +469,40 @@ fn greet(name: &str) -> String {
 // }
 
 #[tauri::command]
-fn config_update(config: Config) -> Result<Config, String> {
+async fn config_update(config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
-            println!("version {:?}",config.version);
-            //send to cloud check session_id for permission
-            // .....
-            //save to local file
-            // modify session_id and save to local file
-            // dummy config
-            let mut dummy_config = login("pharmacies1", "strongroomai").unwrap();
-            //end.
+            let client = reqwest::Client::new();
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "Authorization",
+                HeaderValue::from_str(&format!("Bearer {x}")).unwrap(),
+            );
+            // headers.insert("Location", HeaderValue::from_str(subscription_key).unwrap());
+            let response = client
+                .post("http://localhost:3030/update-config")
+                .headers(headers)
+                .json(&config)
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send response of the api {}", e.to_string()))?
+                .json::<Config>()
+                // .text()
+                .await
+                .map_err(|e| format!("Failed to parse response of the api {}", e.to_string()))?;
+
             let lock = CONFIG_DIR
                 .lock()
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
             match &*lock {
                 Some(config_dir) => {
-                    dummy_config.version = Some(config.version.unwrap_or(0)+1);
+                    // dummy_config.version = Some(config.version.unwrap_or(0) + 1);
                     println!("Debug: Updating config file...");
-                    let config_content = serde_json::to_string_pretty(&dummy_config)
+                    let config_content = serde_json::to_string_pretty(&response)
                         .expect("Failed to serialize default config");
                     std::fs::write(&config_dir, config_content)
                         .expect("Failed to write default config file");
-                    Ok(config)
+                    Ok(response)
                 }
                 None => Err("Config directory not set".to_string()),
             }
@@ -377,7 +512,7 @@ fn config_update(config: Config) -> Result<Config, String> {
 }
 
 #[tauri::command]
-fn config_edit(mut config: Config) -> Result<Config, String> {
+fn config_edit(config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
             let lock = CONFIG_DIR
@@ -385,7 +520,7 @@ fn config_edit(mut config: Config) -> Result<Config, String> {
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
             match &*lock {
                 Some(config_dir) => {
-                    config.client_id = Some("This Is Latest Config".to_string());
+                    // config.client_id = Some("This Is Latest Config".to_string());
                     println!("Debug: Updating config file...");
                     let config_content = serde_json::to_string_pretty(&config)
                         .expect("Failed to serialize default config");
@@ -434,87 +569,24 @@ fn read_config() -> Result<Config, String> {
 }
 
 #[tauri::command]
-fn login(username: &str, password: &str) -> Result<Config, String> {
-    match (username, password) {
-        ("pharmacies1", "strongroomai") => {
-            //return latest config with session_id
-            // this is just randomly -> should be return from cloud
-            let session_id = Uuid::new_v4().to_string();
-            let mut res = read_config()?;
-            let header = json!({
-                "CONTENT_TYPE": "application/json",
-                "Accept": "*/*",
-                "Cache-Control": "no-cache",
-                "Ocp-Apim-Subscription-Key": "963f415e031a4b32a4a1915e26e085ca",
-                "FredApiKey": "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU="
-            });
-            let header_hashmap = serde_json::from_value::<HashMap<String,String>>(header).unwrap();
-
-            let query = json!({
-       "fromDate": "2024-06-01",
-            "toDate": "2024-06-30"
-            });
-            let query_hashmap = serde_json::from_value::<HashMap<String,String>>(query).unwrap();
-            res.session_id = Some(session_id);
-            res.version = Some(1);
-            res.cloud_url = Some("http://127.0.0.1:5173".to_string());
-            res.api_config = Some(vec![
-                Api {
-                    integration_name: Some("Fred".to_string()),
-                    icon: Some("https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png".to_string()),
-                    is_active: Some(false),
-                    description: Some("Fred IT Group works with third-party vendors who require access to pharmacy data held within Fred NXT databases or who require access to real-time dispense and/or point-of-sale events for the creation of Fred NXT Integrations".to_string()),
-                    subscription_key: Some("963f415e031a4b32a4a1915e26e085ca".to_string()),
-                    api_key: Some("MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=".to_string()),
-                    api: Some(vec![
-                        Endpoint{ 
-                            endpoint_name: Some("Get Invoices".to_string()), endpoint: Some("https://api.fred.com.au/integrations/qat/v1/fred-office/invoices".to_string()),
-                             method: Some("GET".to_string()),
-                              header: Some(
-                                header_hashmap
-                              ),
-                               query: Some(query_hashmap),
-                                body: None
-                         }
-                    ]),
-                },
-                Api {
-                    integration_name: Some("Hubspot".to_string()),
-                    icon: Some("https://cdn-icons-png.flaticon.com/512/5968/5968872.png".to_string()),
-                    is_active: Some(false),
-                    description: Some("American developer and marketer of software products for inbound marketing, sales, and customer service.".to_string()),
-                    subscription_key: None,
-                    api_key: None,
-                    api: None,
-                },
-                Api {
-                    integration_name: Some("Salesforce".to_string()),
-                    icon: Some("https://cdn-icons-png.flaticon.com/512/5968/5968880.png".to_string()),
-                    is_active: Some(false),
-                    description: Some("It provides customer relationship management software and applications focused on sales, customer service, marketing automation.".to_string()),
-                    subscription_key: None,
-                    api_key: None,
-                    api: None,
-                },
-            ]);
-            // modify session_id and save to local file
-            let lock = CONFIG_DIR
-                .lock()
-                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
-            match &*lock {
-                Some(config_dir) => {
-                    println!("Debug: Updating config file...");
-                    let config_content = serde_json::to_string_pretty(&res)
-                        .expect("Failed to serialize default config");
-                    std::fs::write(&config_dir, config_content)
-                        .expect("Failed to write default config file");
-                    Ok(res)
-                }
-                None => Err("Config directory not set".to_string()),
-            }
-        }
-        _ => Err(format!("Invalid Credentials")),
-    }
+async fn login(username: &str, password: &str) -> Result<Config, String> {
+    let client = reqwest::Client::new();
+    let req = LoginRequest {
+        name: username.to_string(),
+        password: password.to_string(),
+        company_id: "c1244c83-76e9-4d37-9a44-d24e46e868ac".to_string(),
+    };
+    let response = client
+        .post("http://localhost:3030/login")
+        .json(&req)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send response of the api {}", e.to_string()))?
+        .json::<Config>()
+        .await
+        .map_err(|_x| "Failed to parse response of the api".to_string())?;
+    let _ = config_edit(response.clone());
+    Ok(response)
 }
 
 fn setup_dir(config_path: PathBuf, app_path: Env) -> Result<(), String> {
