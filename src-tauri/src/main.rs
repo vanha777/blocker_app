@@ -77,6 +77,7 @@ struct ApiConfig {
 
 #[tauri::command]
 async fn fetch_data(integration_name: &str,endpoint_name: &str) -> Result<String, String> {
+    println!("Debug: Calling Api endpoint ... {:#?}",endpoint_name);
     // get config file
     // match name -> trigger api call
     // let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
@@ -246,7 +247,8 @@ fn main() {
             login,
             config_update,
             fetch_data,
-            send_data
+            send_data,
+            config_edit
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -343,16 +345,41 @@ fn greet(name: &str) -> String {
 // }
 
 #[tauri::command]
-fn config_update(mut config: Config) -> Result<Config, String> {
+fn config_update(config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
+            println!("version {:?}",config.version);
             //send to cloud check session_id for permission
             // .....
             //save to local file
             // modify session_id and save to local file
             // dummy config
-            let dummy_config = login("pharmacies1", "strongroomai").unwrap();
+            let mut dummy_config = login("pharmacies1", "strongroomai").unwrap();
             //end.
+            let lock = CONFIG_DIR
+                .lock()
+                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+            match &*lock {
+                Some(config_dir) => {
+                    dummy_config.version = Some(config.version.unwrap_or(0)+1);
+                    println!("Debug: Updating config file...");
+                    let config_content = serde_json::to_string_pretty(&dummy_config)
+                        .expect("Failed to serialize default config");
+                    std::fs::write(&config_dir, config_content)
+                        .expect("Failed to write default config file");
+                    Ok(config)
+                }
+                None => Err("Config directory not set".to_string()),
+            }
+        }
+        None => Err(format!("Login required")),
+    }
+}
+
+#[tauri::command]
+fn config_edit(mut config: Config) -> Result<Config, String> {
+    match config.session_id.as_ref() {
+        Some(x) => {
             let lock = CONFIG_DIR
                 .lock()
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
@@ -360,7 +387,7 @@ fn config_update(mut config: Config) -> Result<Config, String> {
                 Some(config_dir) => {
                     config.client_id = Some("This Is Latest Config".to_string());
                     println!("Debug: Updating config file...");
-                    let config_content = serde_json::to_string_pretty(&dummy_config)
+                    let config_content = serde_json::to_string_pretty(&config)
                         .expect("Failed to serialize default config");
                     std::fs::write(&config_dir, config_content)
                         .expect("Failed to write default config file");
@@ -436,7 +463,7 @@ fn login(username: &str, password: &str) -> Result<Config, String> {
                     integration_name: Some("Fred".to_string()),
                     icon: Some("https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png".to_string()),
                     is_active: Some(false),
-                    description: Some("Fred".to_string()),
+                    description: Some("Fred IT Group works with third-party vendors who require access to pharmacy data held within Fred NXT databases or who require access to real-time dispense and/or point-of-sale events for the creation of Fred NXT Integrations".to_string()),
                     subscription_key: Some("963f415e031a4b32a4a1915e26e085ca".to_string()),
                     api_key: Some("MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=".to_string()),
                     api: Some(vec![

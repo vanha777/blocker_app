@@ -119,6 +119,7 @@ function Logs({ config }) {
                                         key={index}
                                         onClick={() => callEndpoint(l.integration_name, item.endpoint_name)}
                                         className="btn-primary btn py-2 px-4 rounded"
+                                        disabled={!l.isActive}
                                     >
                                         Call {item.endpoint_name} Endpoint
                                     </button>
