@@ -350,6 +350,9 @@ fn config_update(mut config: Config) -> Result<Config, String> {
             // .....
             //save to local file
             // modify session_id and save to local file
+            // dummy config
+            let dummy_config = login("pharmacies1", "strongroomai").unwrap();
+            //end.
             let lock = CONFIG_DIR
                 .lock()
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
@@ -357,7 +360,7 @@ fn config_update(mut config: Config) -> Result<Config, String> {
                 Some(config_dir) => {
                     config.client_id = Some("This Is Latest Config".to_string());
                     println!("Debug: Updating config file...");
-                    let config_content = serde_json::to_string_pretty(&config)
+                    let config_content = serde_json::to_string_pretty(&dummy_config)
                         .expect("Failed to serialize default config");
                     std::fs::write(&config_dir, config_content)
                         .expect("Failed to write default config file");

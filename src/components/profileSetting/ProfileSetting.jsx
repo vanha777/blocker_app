@@ -47,6 +47,24 @@ function ProfileSettings({ config, setConfig }) {
                 <div className="divider" ></div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {
+                        config.api_config ? (
+                            config.api_config.map((i, k) => {
+                                return (
+                                    <>
+                                        <InputText labelTitle="Name" defaultValue={i.name} updateFormValue={updateFormValue} updateType="name" />
+                                        <InputText labelTitle="Api Key" defaultValue={i.api_key} updateFormValue={updateFormValue} updateType="api_key" />
+                                        <InputText labelTitle="Subscription Key" defaultValue={i.subscription_key} updateFormValue={updateFormValue} updateType="subscription_key" />
+                                    </>
+                                )
+                            })
+                        ) : (
+                            <p>No API configurations found.</p>
+                        )
+                    }
+                </div>
+
+                {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {
                         config.api_config.map((i, k) => {
                             return (
                                 <>
@@ -57,7 +75,7 @@ function ProfileSettings({ config, setConfig }) {
                             )
                         })
                     }
-                </div>
+                </div> */}
                 <div className="mt-16"><button className="btn btn-primary float-right" onClick={() => updateProfile()}>Update</button></div>
             </TitleCard>
         </>
