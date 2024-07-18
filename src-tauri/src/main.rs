@@ -197,9 +197,11 @@ fn main() {
                     window.show().unwrap();
                 }
                 "update" => {
-                    let window = app.get_window("main").unwrap();
-                    // window.hide().unwrap();
-                    window.show().unwrap();
+                    // restart_application(&restart_mutex)
+                    restart(&app.env());
+                    // let window = app.get_window("main").unwrap();
+                    // // window.hide().unwrap();
+                    // window.show().unwrap();
                 }
                 _ => {}
             },
@@ -321,7 +323,7 @@ fn config_update(mut config: Config) -> Result<Config, String> {
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
             match &*lock {
                 Some(config_dir) => {
-                    config.client_id=Some("This Is Latest Config".to_string());
+                    config.client_id = Some("This Is Latest Config".to_string());
                     println!("Debug: Updating config file...");
                     let config_content = serde_json::to_string_pretty(&config)
                         .expect("Failed to serialize default config");
