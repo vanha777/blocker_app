@@ -246,7 +246,8 @@ fn main() {
             login,
             config_update,
             fetch_data,
-            send_data
+            send_data,
+            config_edit
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -374,6 +375,30 @@ fn config_update(mut config: Config) -> Result<Config, String> {
 }
 
 #[tauri::command]
+fn config_edit(mut config: Config) -> Result<Config, String> {
+    match config.session_id.as_ref() {
+        Some(x) => {
+            let lock = CONFIG_DIR
+                .lock()
+                .map_err(|e| format!("Mutex lock error: {:?}", e))?;
+            match &*lock {
+                Some(config_dir) => {
+                    config.client_id = Some("This Is Latest Config".to_string());
+                    println!("Debug: Updating config file...");
+                    let config_content = serde_json::to_string_pretty(&config)
+                        .expect("Failed to serialize default config");
+                    std::fs::write(&config_dir, config_content)
+                        .expect("Failed to write default config file");
+                    Ok(config)
+                }
+                None => Err("Config directory not set".to_string()),
+            }
+        }
+        None => Err(format!("Login required")),
+    }
+}
+
+#[tauri::command]
 fn crash() -> String {
     // let parsed_finger = "finger".parse::<i32>().unwrap(); // Attempt to parse and immediately unwrap
     // format!("Parsed finger: {}", parsed_finger)
@@ -436,7 +461,7 @@ fn login(username: &str, password: &str) -> Result<Config, String> {
                     integration_name: Some("Fred".to_string()),
                     icon: Some("https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png".to_string()),
                     is_active: Some(false),
-                    description: Some("Fred".to_string()),
+                    description: Some("Fred IT Group works with third-party vendors who require access to pharmacy data held within Fred NXT databases or who require access to real-time dispense and/or point-of-sale events for the creation of Fred NXT Integrations".to_string()),
                     subscription_key: Some("963f415e031a4b32a4a1915e26e085ca".to_string()),
                     api_key: Some("MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=".to_string()),
                     api: Some(vec![

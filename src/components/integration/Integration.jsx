@@ -17,14 +17,14 @@ import { invoke } from '@tauri-apps/api'
 
 function Integration({ config, setConfig }) {
 
-    useEffect(() => {
-        console.log(config);
-        // invoke("read_config").then((response) => {
-        //     setConfig(config);
-        // }).catch((err) => {
-        //     console.log("error to fetch config ", err);
-        // });
-    }, []); // Empty dependency array ensures this runs only once
+    // useEffect(() => {
+    //     console.log("Config updated detected ...");
+    //     // invoke("read_config").then((response) => {
+    //     //     setConfig(config);
+    //     // }).catch((err) => {
+    //     //     console.log("error to fetch config ", err);
+    //     // });
+    // }, [config]); // Empty dependency array ensures this runs only once
 
     const [integrationList, setIntegrationList] = useState(config.api_config || null);
     const [newConfig, setNewConfig] = useState(config);
@@ -41,10 +41,10 @@ function Integration({ config, setConfig }) {
     useEffect(() => {
         let new_config = config;
         new_config.api_config = integrationList;
-        invoke("config_update", { config: new_config }).then((response) => {
-            console.log("this is response config_update ", response);
-            // setConfig(response)
-        })
+            invoke("config_edit", { config: new_config }).then((response) => {
+                console.log("this is response config_update ", response);
+                // setConfig(response)
+            })
     }, [integrationList]);
 
     return (
