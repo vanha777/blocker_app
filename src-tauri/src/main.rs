@@ -309,7 +309,7 @@ fn greet(name: &str) -> String {
 // }
 
 #[tauri::command]
-fn config_update(config: Config) -> Result<Config, String> {
+fn config_update(mut config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
             //send to cloud check session_id for permission
@@ -321,6 +321,7 @@ fn config_update(config: Config) -> Result<Config, String> {
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
             match &*lock {
                 Some(config_dir) => {
+                    config.client_id=Some("This Is Latest Config".to_string());
                     println!("Debug: Updating config file...");
                     let config_content = serde_json::to_string_pretty(&config)
                         .expect("Failed to serialize default config");

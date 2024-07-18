@@ -88,7 +88,7 @@ function App() {
       }
       {config && user && activeButton === 3 &&
         <div className="pt-8 pb-8 h-screen w-screen flex items-center justify-center overflow-auto">
-          <ProfileSettings config={config} />
+          <ProfileSettings config={config} setConfig={setConfig} />
         </div>
       }
       {config && !save && tab == 1 &&
