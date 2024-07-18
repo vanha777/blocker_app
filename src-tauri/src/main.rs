@@ -2,7 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use serde_json::from_str;
+use serde_json::{from_str, json};
+use tauri::utils::config;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, read_to_string, File};
@@ -34,7 +35,30 @@ struct Config {
     client_id: Option<String>,
     version: Option<u8>,
     // api_config: Option<HashMap<String, Vec<ApiConfig>>>,
-    api_config: Option<Vec<serde_json::Value>>,
+    api_config: Option<Vec<Api>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct Api {
+    // this is a token from cloud -> required for cloud http request
+    integration_name: Option<String>,
+    icon: Option<String>,
+    #[serde(rename(serialize = "isActive", deserialize = "isActive"))]
+    is_active: Option<bool>,
+    description: Option<String>,
+    subscription_key: Option<String>,
+    api_key: Option<String>,
+    api: Option<Vec<Endpoint>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct Endpoint {
+    endpoint_name: Option<String>,
+    endpoint: Option<String>,
+    method: Option<String>,
+    header: Option<HashMap<String, String>>,
+    query: Option<HashMap<String, String>>,
+    body: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -52,15 +76,23 @@ struct ApiConfig {
 // }
 
 #[tauri::command]
-async fn fetch_data(api_name: &str) -> Result<String, String> {
+async fn fetch_data(integration_name: &str,endpoint_name: &str) -> Result<String, String> {
     // get config file
     // match name -> trigger api call
-    let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
-    let query = [("fromDate", "2024-06-01"), ("toDate", "2024-06-30")];
-    let subscription_key = "963f415e031a4b32a4a1915e26e085ca";
-    let fred_api_key = "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=";
+    // let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
+    // let query = [("fromDate", "2024-06-01"), ("toDate", "2024-06-30")];
+    // let subscription_key = "963f415e031a4b32a4a1915e26e085ca";
+    // let fred_api_key = "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=";
 
-    let res = handler::send_query(url, &query, subscription_key, fred_api_key)
+    let config = read_config().unwrap().api_config.unwrap();
+let integration = config
+    .iter()
+    .find(|x| x.integration_name.clone().unwrap() == integration_name.to_string()).unwrap().api.clone().unwrap(); 
+
+    let endpoint = integration.iter().find(|x|x.endpoint_name.clone().unwrap() == endpoint_name.to_string()).unwrap();
+
+    //activate endpoint
+    let res = handler::send(endpoint)
         .await
         .map_err(|e| format!("Error fetching data: {:?}", e))?;
     Ok(res)
@@ -197,9 +229,11 @@ fn main() {
                     window.show().unwrap();
                 }
                 "update" => {
-                    let window = app.get_window("main").unwrap();
-                    // window.hide().unwrap();
-                    window.show().unwrap();
+                    // restart_application(&restart_mutex)
+                    restart(&app.env());
+                    // let window = app.get_window("main").unwrap();
+                    // // window.hide().unwrap();
+                    // window.show().unwrap();
                 }
                 _ => {}
             },
@@ -309,7 +343,7 @@ fn greet(name: &str) -> String {
 // }
 
 #[tauri::command]
-fn config_update(config: Config) -> Result<Config, String> {
+fn config_update(mut config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
             //send to cloud check session_id for permission
@@ -321,6 +355,7 @@ fn config_update(config: Config) -> Result<Config, String> {
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
             match &*lock {
                 Some(config_dir) => {
+                    config.client_id = Some("This Is Latest Config".to_string());
                     println!("Debug: Updating config file...");
                     let config_content = serde_json::to_string_pretty(&config)
                         .expect("Failed to serialize default config");
@@ -376,40 +411,61 @@ fn login(username: &str, password: &str) -> Result<Config, String> {
             // this is just randomly -> should be return from cloud
             let session_id = Uuid::new_v4().to_string();
             let mut res = read_config()?;
+            let header = json!({
+                "CONTENT_TYPE": "application/json",
+                "Accept": "*/*",
+                "Cache-Control": "no-cache",
+                "Ocp-Apim-Subscription-Key": "963f415e031a4b32a4a1915e26e085ca",
+                "FredApiKey": "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU="
+            });
+            let header_hashmap = serde_json::from_value::<HashMap<String,String>>(header).unwrap();
+
+            let query = json!({
+       "fromDate": "2024-06-01",
+            "toDate": "2024-06-30"
+            });
+            let query_hashmap = serde_json::from_value::<HashMap<String,String>>(query).unwrap();
             res.session_id = Some(session_id);
             res.version = Some(1);
             res.cloud_url = Some("http://127.0.0.1:5173".to_string());
             res.api_config = Some(vec![
-                serde_json::json!(
-                    {
-                        "name": "Fred",
-                        "icon": "https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png",
-                        "isActive": false,
-                        "description": "Fred IT Group works with third-party vendors who require access to pharmacy data held within Fred NXT databases or who require access to real-time dispense and/or point-of-sale events for the creation of Fred NXT Integrations.",
-                        "subscription_key": "963f415e031a4b32a4a1915e26e085ca",
-                        "api_key": "MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU="
-                      }
-                ),
-                serde_json::json!(
-                    {
-                        "name": "Hubspot",
-                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968872.png",
-                        "isActive": true,
-                        "description": "American developer and marketer of software products for inbound marketing, sales, and customer service.",
-                        "subscription_key": "",
-                        "api_key": ""
-                      }
-                ),
-                serde_json::json!(
-                    {
-                        "name": "Salesforce",
-                        "icon": "https://cdn-icons-png.flaticon.com/512/5968/5968880.png",
-                        "isActive": true,
-                        "description": "It provides customer relationship management software and applications focused on sales, customer service, marketing automation.",
-                        "subscription_key": "",
-                        "api_key": ""
-                      }
-                ),
+                Api {
+                    integration_name: Some("Fred".to_string()),
+                    icon: Some("https://eazypic.s3.ap-southeast-4.amazonaws.com/Image_17-7-2024_at_11.30_PM-removebg-preview.png".to_string()),
+                    is_active: Some(false),
+                    description: Some("Fred".to_string()),
+                    subscription_key: Some("963f415e031a4b32a4a1915e26e085ca".to_string()),
+                    api_key: Some("MGND9YRNVC/m+7RAoLmoBgUo1lwI+jfCggyPTcUILDZhYtjJJ9fWr2sITM1BLcMpjsqpxV/mGf98lVvdn8HBsLs7nzFecYPV/B7eY9ONu+5pg2r2Ki0UYz0Z7S4JjP7BYNMEDgpCzyC37C3fbosUF8wwi7nYAQhg1OKNiPgqwwgSIVJKuhD9k/DKYEX0QDXuU=".to_string()),
+                    api: Some(vec![
+                        Endpoint{ 
+                            endpoint_name: Some("Get Invoices".to_string()), endpoint: Some("https://api.fred.com.au/integrations/qat/v1/fred-office/invoices".to_string()),
+                             method: Some("GET".to_string()),
+                              header: Some(
+                                header_hashmap
+                              ),
+                               query: Some(query_hashmap),
+                                body: None
+                         }
+                    ]),
+                },
+                Api {
+                    integration_name: Some("Hubspot".to_string()),
+                    icon: Some("https://cdn-icons-png.flaticon.com/512/5968/5968872.png".to_string()),
+                    is_active: Some(false),
+                    description: Some("American developer and marketer of software products for inbound marketing, sales, and customer service.".to_string()),
+                    subscription_key: None,
+                    api_key: None,
+                    api: None,
+                },
+                Api {
+                    integration_name: Some("Salesforce".to_string()),
+                    icon: Some("https://cdn-icons-png.flaticon.com/512/5968/5968880.png".to_string()),
+                    is_active: Some(false),
+                    description: Some("It provides customer relationship management software and applications focused on sales, customer service, marketing automation.".to_string()),
+                    subscription_key: None,
+                    api_key: None,
+                    api: None,
+                },
             ]);
             // modify session_id and save to local file
             let lock = CONFIG_DIR

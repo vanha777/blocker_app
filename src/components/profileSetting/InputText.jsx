@@ -15,7 +15,7 @@ function InputText({labelTitle, labelStyle, type, containerStyle, defaultValue, 
             <label className="label">
                 <span className={"label-text text-base-content " + labelStyle}>{labelTitle}</span>
             </label>
-            <input type={type || "text"} value={value} placeholder={placeholder || ""} onChange={(e) => updateInputValue(e.target.value)}className="input  input-bordered w-full " />
+            <input disabled type={type || "text"} value={value} placeholder={placeholder || ""} onChange={(e) => updateInputValue(e.target.value)}className="input  input-bordered w-full " />
         </div>
     )
 }

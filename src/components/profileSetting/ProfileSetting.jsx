@@ -6,8 +6,9 @@ import TitleCard from "../TitleCard"
 import InputText from './InputText'
 import TextAreaInput from './TextAreaInput'
 import ToogleInput from './ToogleInput'
+import { invoke } from '@tauri-apps/api'
 
-function ProfileSettings({ config }) {
+function ProfileSettings({ config, setConfig }) {
 
     const [isSync, setIsSync] = useState(false);
 
@@ -16,7 +17,12 @@ function ProfileSettings({ config }) {
 
     // Call API to update profile settings changes
     const updateProfile = () => {
-        // dispatch(showNotification({message : "Profile Updated", status : 1}))    
+        invoke("config_update", { config: config }).then((response) => {
+            console.log("Config update ", response);
+            setConfig(response);
+        }).catch((error) => {
+            console.error('Error invoking read_config:', error);
+        });
     }
 
     const updateFormValue = ({ updateType, value }) => {

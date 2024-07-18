@@ -50,7 +50,7 @@ function Integration({ config, setConfig }) {
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {integrationList != null &&
+                {integrationList != null ? (
                     integrationList.map((i, k) => {
                         return (
                             <TitleCard key={k} title={i.name} topMargin={"mt-2"}>
@@ -63,7 +63,11 @@ function Integration({ config, setConfig }) {
                                 </div>
                             </TitleCard>
                         )
-                    })
+                    }
+                    )
+                ) : (
+                    <p>No API data available</p>
+                )
                 }
             </div>
         </>

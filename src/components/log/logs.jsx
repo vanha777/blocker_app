@@ -2,6 +2,7 @@ import moment from "moment"
 import { useEffect, useState } from "react"
 // import { useDispatch, useSelector } from "react-redux"
 import TitleCard from "../TitleCard"
+import { invoke } from '@tauri-apps/api'
 // import { showNotification } from '../../common/headerSlice'
 
 
@@ -54,16 +55,22 @@ function Logs({ config }) {
         else return <div className="badge badge-ghost">{status}</div>
     }
 
-    const callEndpoint = (name) => {
-        invoke("fetch_data").then((response) => setMessage(response))
+    const callEndpoint = (integration_name, endpoint_name) => {
+        // invoke("fetch_data").then((response) => setMessage(response))
+        console.log(`calling integration ${integration_name} with endpoint ${endpoint_name}`);
+        invoke("fetch_data", { integrationName: integration_name, endpointName: endpoint_name }).then((response) => {
+            console.log("this is response from API", response);
+        }).catch((err) => {
+            console.log("this is error from API", err);
+        })
     };
 
     const callCloudServer = () => {
         invoke("send_data").then((response) => setMessage(response))
     };
-
+    console.log("DEBUGGG config hereeee", config);
     return (
-        <div className="w-full h-full overflow-y-auto">
+        <div className="w-full h-full overflow-y-auto p-4 pb-8">
 
             <TitleCard title="Logs" topMargin="mt-6">
 
@@ -99,21 +106,35 @@ function Logs({ config }) {
                     </table>
                 </div>
             </TitleCard>
-            <div className="p-4">
-            <div className="grid grid-cols-4 gap-4">
-                {config.api_config.map((l, k) => (
-                    <button
-                        key={k}
-                        onClick={() => callEndpoint(l.name)}
-                        // className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300 ease-in-out"
-                          className="btn-primary btn py-2 px-4 rounded"
-                    >
-                        Call {l.name} Endpoint
-                    </button>
-                ))}
-            </div>
-            </div>
-           
+            {config.api_config ? (
+                config.api_config.map((l, k) => (
+                    <div className="p-4">
+                        <label className="label">
+                            <span className="label-text text-base-content">{l.integration_name}</span>
+                        </label>
+                        <div className="grid grid-cols-4 gap-4">
+                            {l.api ? (
+                                l.api.map((item, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => callEndpoint(l.integration_name, item.endpoint_name)}
+                                        className="btn-primary btn py-2 px-4 rounded"
+                                    >
+                                        Call {item.endpoint_name} Endpoint
+                                    </button>
+                                ))
+                            ) : (
+                                <p>No API data available</p>
+                            )}
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <p>No API data available</p>
+            )
+            }
+
+
         </div>
     )
 }
