@@ -77,6 +77,7 @@ struct ApiConfig {
 
 #[tauri::command]
 async fn fetch_data(integration_name: &str,endpoint_name: &str) -> Result<String, String> {
+    println!("Debug: Calling Api endpoint ... {:#?}",endpoint_name);
     // get config file
     // match name -> trigger api call
     // let url = "https://api.fred.com.au/integrations/qat/v1/fred-office/invoices";
@@ -344,22 +345,23 @@ fn greet(name: &str) -> String {
 // }
 
 #[tauri::command]
-fn config_update(mut config: Config) -> Result<Config, String> {
+fn config_update(config: Config) -> Result<Config, String> {
     match config.session_id.as_ref() {
         Some(x) => {
+            println!("version {:?}",config.version);
             //send to cloud check session_id for permission
             // .....
             //save to local file
             // modify session_id and save to local file
             // dummy config
-            let dummy_config = login("pharmacies1", "strongroomai").unwrap();
+            let mut dummy_config = login("pharmacies1", "strongroomai").unwrap();
             //end.
             let lock = CONFIG_DIR
                 .lock()
                 .map_err(|e| format!("Mutex lock error: {:?}", e))?;
             match &*lock {
                 Some(config_dir) => {
-                    config.client_id = Some("This Is Latest Config".to_string());
+                    dummy_config.version = Some(config.version.unwrap_or(0)+1);
                     println!("Debug: Updating config file...");
                     let config_content = serde_json::to_string_pretty(&dummy_config)
                         .expect("Failed to serialize default config");
