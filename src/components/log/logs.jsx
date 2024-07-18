@@ -2,6 +2,7 @@ import moment from "moment"
 import { useEffect, useState } from "react"
 // import { useDispatch, useSelector } from "react-redux"
 import TitleCard from "../TitleCard"
+import { invoke } from '@tauri-apps/api'
 // import { showNotification } from '../../common/headerSlice'
 
 
@@ -57,12 +58,17 @@ function Logs({ config }) {
     const callEndpoint = (integration_name, endpoint_name) => {
         // invoke("fetch_data").then((response) => setMessage(response))
         console.log(`calling integration ${integration_name} with endpoint ${endpoint_name}`);
+        invoke("fetch_data", { integrationName: integration_name, endpointName: endpoint_name }).then((response) => {
+            console.log("this is response from API", response);
+        }).catch((err) => {
+            console.log("this is error from API", err);
+        })
     };
 
     const callCloudServer = () => {
         invoke("send_data").then((response) => setMessage(response))
     };
-console.log("DEBUGGG config hereeee",config);
+    console.log("DEBUGGG config hereeee", config);
     return (
         <div className="w-full h-full overflow-y-auto p-4 pb-8">
 
