@@ -8,7 +8,7 @@ import TextAreaInput from './TextAreaInput'
 import ToogleInput from './ToogleInput'
 import { invoke } from '@tauri-apps/api'
 
-function ProfileSettings({ config,setConfig }) {
+function ProfileSettings({ config, setConfig }) {
 
     const [isSync, setIsSync] = useState(false);
 
@@ -17,8 +17,8 @@ function ProfileSettings({ config,setConfig }) {
 
     // Call API to update profile settings changes
     const updateProfile = () => {
-        invoke("config_update", { config:config}).then((response) => {
-            console.log("Config update ",response);
+        invoke("config_update", { config: config }).then((response) => {
+            console.log("Config update ", response);
             setConfig(response);
         }).catch((error) => {
             console.error('Error invoking read_config:', error);
