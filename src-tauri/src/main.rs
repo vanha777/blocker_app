@@ -1,5 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use image::{DynamicImage, GenericImageView, ImageFormat};
 use lazy_static::lazy_static;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
@@ -8,11 +9,12 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{self, create_dir_all, read_to_string, File};
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use std::{env, thread};
-use tauri::api::path::config_dir;
+use tauri::api::path::{app_config_dir, config_dir};
 use tauri::utils::config;
 use tauri::SystemTray;
 use tauri::{api::process::restart, Env, Manager};
@@ -80,11 +82,12 @@ struct Api {
     integration_name: Option<String>,
     icon: Option<String>,
     #[serde(rename(serialize = "isActive", deserialize = "isActive"))]
-    is_active: Option<bool>,
+    is_active: bool,
     description: Option<String>,
     subscription_key: Option<String>,
     api_key: Option<String>,
     api: Option<Vec<Endpoint>>,
+    path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -375,7 +378,9 @@ fn main() {
             fetch_data,
             send_data,
             config_edit,
-            fetch_app
+            fetch_app,
+            block_app,
+            enable_focus_mode
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -594,6 +599,7 @@ async fn login(username: &str, password: &str) -> Result<Config, String> {
 
 #[tauri::command]
 async fn fetch_app() {
+    let mut app_config = read_config().unwrap();
     let mut apps = Vec::new();
     let app_dir = PathBuf::from("/Applications");
     if app_dir.exists() {
@@ -601,11 +607,220 @@ async fn fetch_app() {
             let entry = entry.unwrap();
             let path = entry.path();
             if path.is_dir() {
-                apps.push(path.display().to_string());
+                println!("Debug: this is apps {:?}", path);
+                // apps.push(path.display().to_string());
+                let name = path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .trim()
+                    .to_string();
+                let path_string = path.to_string_lossy().trim().to_string();
+                let icon_path_string = find_icon_in_resources(&path_string.clone());
+                apps.push(Api {
+                    integration_name: Some(name),
+                    icon: match icon_path_string {
+                        Some(x) => match convert_icns_to_png(x).await {
+                            Ok(png_path) => Some(png_path),
+                            Err(_e) => {
+                                println!("Debug: error converting png {:?}", _e);
+                                None
+                            }
+                        },
+                        None => None,
+                    },
+                    is_active: false,
+                    description: None,
+                    subscription_key: None,
+                    api_key: None,
+                    api: None,
+                    path: Some(path_string),
+                })
             }
         }
     }
-    println!("Debug: This Is All Apps in your system {:?}",apps);
+    app_config.api_config = Some(apps);
+    let _ = config_edit(app_config).unwrap();
+}
+
+#[tauri::command]
+async fn block_app() {
+    println!("Debug: block apps triggering");
+    let app_config = read_config().unwrap().api_config;
+
+    if let Some(apps) = app_config {
+        for app in apps {
+            match app.is_active {
+                true => {
+                    if let Some(app_name) = app.integration_name {
+                        // let output = match Command::new("sudo")
+                        //     .arg("pkill")
+                        //     .arg("-f")
+                        //     .arg(app_name)
+                        //     .output()
+                        //     .map_err(|e| e.to_string())
+                        // {
+                        //     Ok(x) => {
+                        //         println!("Debug: success terminate apps")
+                        //     }
+                        //     Err(e) => {
+                        //         println!("Error: cannot block apps {:?}",e)
+                        //     }
+                        // };
+                        let script = format!(r#"tell application "{}" to quit"#, app_name);
+
+                        let output = match Command::new("osascript")
+                            .arg("-e")
+                            .arg(script)
+                            .output()
+                            .map_err(|e| e.to_string())
+                        {
+                            Ok(x) => {
+                                println!("debug: sucess closing apps")
+                            }
+                            Err(e) => println!("Debug: error quitting apps {:?}", e),
+                        };
+                    }
+                    continue;
+                }
+                false => continue,
+            }
+        }
+    }
+}
+
+#[tauri::command]
+async fn enable_focus_mode() -> Result<(), String> {
+    println!("Debug: focus mode triggering 0");
+    let app_config = read_config().unwrap().api_config;
+    let mut app_name_vec = Vec::new();
+    if let Some(apps) = app_config {
+        for app in apps {
+            match app.is_active {
+                true => {
+                    if let Some(app_name) = app.integration_name {
+                        app_name_vec.push(app_name);
+                    }
+                    continue;
+                }
+                false => continue,
+            }
+        }
+    }
+    println!(
+        "Debug: focus mode triggering this is app name {:?}",
+        app_name_vec
+    );
+    // Spawn a thread to monitor and block apps
+    let handle = thread::spawn(move || {
+        let start_time = std::time::Instant::now();
+        let duration = Duration::from_secs(20);
+
+        while start_time.elapsed() < duration {
+            println!("Debug: this is in loop ...");
+            for app in &app_name_vec {
+                // Check if the app is running
+                let output = Command::new("pgrep")
+                    .arg("-f")
+                    .arg(app)
+                    .output()
+                    .expect("Failed to execute command");
+
+                if !output.stdout.is_empty() {
+                    println!("Debug: this is in loop, detected app running");
+                    // If the app is running, quit it
+                    Command::new("osascript")
+                        .arg("-e")
+                        .arg(format!("tell application \"{}\" to quit", app))
+                        .output()
+                        .expect("Failed to quit app");
+                }
+            }
+            // Check every 5 seconds
+            thread::sleep(Duration::from_secs(5));
+        }
+    });
+
+    // Wait for the thread to finish
+    let _ = handle.join();
+
+    Ok(())
+}
+
+fn find_icon_in_resources(app_path: &str) -> Option<PathBuf> {
+    let resources_path = Path::new(app_path).join("Contents").join("Resources");
+    if !resources_path.is_dir() {
+        return None;
+    }
+    match std::fs::read_dir(resources_path) {
+        Ok(entries) => {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.extension().map_or(false, |ext| ext == "icns") {
+                        println!("this is icon path {:?}", path);
+                        return Some(path);
+                    }
+                }
+            }
+            None
+        }
+        Err(_) => None,
+    }
+}
+
+// may be should read as a base64
+async fn convert_icns_to_png(icns_path: PathBuf) -> Result<String, String> {
+    let icns_path_str = icns_path.to_str().ok_or("Invalid ICNS path")?;
+
+    // Create a temporary directory for the icon set
+    let iconset_dir = icns_path.with_extension("iconset");
+    if iconset_dir.exists() {
+        fs::remove_dir_all(&iconset_dir).map_err(|e| e.to_string())?;
+    }
+    fs::create_dir(&iconset_dir).map_err(|e| e.to_string())?;
+
+    // Use iconutil to convert ICNS to iconset
+    let output = Command::new("iconutil")
+        .arg("--convert")
+        .arg("iconset")
+        .arg(icns_path_str)
+        .arg("--output")
+        .arg(iconset_dir.to_str().ok_or("Invalid iconset path")?)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "iconutil failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    // Find the largest PNG file in the iconset
+    let largest_png = fs::read_dir(&iconset_dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension()? == "png" {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .max_by_key(|path| path.metadata().ok().map(|meta| meta.len()).unwrap_or(0))
+        .ok_or("No PNG files found in iconset")?;
+
+    // Create the PNG path in the same directory as the .icns file
+    let png_path = icns_path.with_extension("png");
+    fs::rename(&largest_png, &png_path).map_err(|e| e.to_string())?;
+
+    // Clean up the temporary iconset directory
+    fs::remove_dir_all(&iconset_dir).map_err(|e| e.to_string())?;
+
+    let path_string = png_path.to_string_lossy().to_string();
+    Ok(path_string)
 }
 
 fn setup_dir(config_path: PathBuf, app_path: Env) -> Result<(), String> {

@@ -32,10 +32,10 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.zen_blocker.dev",
+      "identifier": "com.zen-blocker.dev",
       "longDescription": "",
       "macOS": {
-        "entitlements": null,
+        "entitlements": "./entitlements.plist",
         "exceptionDomain": "",
         "frameworks": [],
         "providerShortName": null,

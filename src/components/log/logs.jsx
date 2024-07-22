@@ -67,15 +67,23 @@ function Logs({ config }) {
     };
 
     const callRefresh = () => {
-        // invoke("send_data").then((response) => setMessage(response))
+        invoke("block_app").then((response) => {
+            console.log("This Is Get Item response", response)
+        })
         console.log("this is refreshing")
+    };
+    const callFocus = () => {
+        invoke("enable_focus_mode").then((response) => {
+            console.log("This Is Get Item response", response)
+        })
+        console.log("this is Focusing")
     };
 
     console.log("DEBUGGG config hereeee", config);
     return (
         <div className="w-full h-full overflow-y-auto p-4 pb-8">
 
-            <TitleCard title="Logs" topMargin="mt-6" TopSideButtons="Refresh"callRefresh={callRefresh}>
+            <TitleCard title="Logs" topMargin="mt-6" TopSideButtons="Refresh" callRefresh={callFocus}>
 
                 {/* Invoice list in table format loaded constant */}
                 <div className="overflow-x-auto w-full">
