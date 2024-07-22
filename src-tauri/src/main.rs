@@ -294,7 +294,7 @@ fn main() {
                     std::fs::write(&config_file_path, config_content)
                         .expect("Failed to write default config file");
                     // config = default_config;
-                    let _ = setup_dir(config_file_path, app.env());
+                    // let _ = setup_dir(config_file_path, app.env());
                 }
                 false => {
                     println!("Debug: Reading config file...");
@@ -316,9 +316,11 @@ fn main() {
                     //     e
                     // })?;
                     // config = existing_config;
-                    let _ = setup_dir(config_file_path, app.env());
+                    // let _ = setup_dir(config_file_path, app.env());
                 }
             }
+               // set up a config_dir as mutex
+               let _ = setup_dir(config_file_path, app.env());
             Ok(())
         })
         .system_tray(tray)
