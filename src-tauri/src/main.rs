@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fs::{create_dir_all, read_to_string, File};
+use std::fs::{self, create_dir_all, read_to_string, File};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::{exit, Command};
@@ -269,7 +269,7 @@ fn main() {
         .setup(|app| {
             println!("Debug: Setting up application ...");
             // let mut config = Config::default();
-            let app_name = "com.strong-extractions.dev";
+            let app_name = "com.zen_blocker.dev";
             let config_dir = config_dir()
                 .expect("Failed to get config directory")
                 .join(app_name);
@@ -319,8 +319,8 @@ fn main() {
                     // let _ = setup_dir(config_file_path, app.env());
                 }
             }
-               // set up a config_dir as mutex
-               let _ = setup_dir(config_file_path, app.env());
+            // set up a config_dir as mutex
+            let _ = setup_dir(config_file_path, app.env());
             Ok(())
         })
         .system_tray(tray)
@@ -374,7 +374,8 @@ fn main() {
             config_update,
             fetch_data,
             send_data,
-            config_edit
+            config_edit,
+            fetch_app
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -589,6 +590,22 @@ async fn login(username: &str, password: &str) -> Result<Config, String> {
         .map_err(|_x| "Failed to parse response of the api".to_string())?;
     let _ = config_edit(response.clone());
     Ok(response)
+}
+
+#[tauri::command]
+async fn fetch_app() {
+    let mut apps = Vec::new();
+    let app_dir = PathBuf::from("/Applications");
+    if app_dir.exists() {
+        for entry in fs::read_dir(app_dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_dir() {
+                apps.push(path.display().to_string());
+            }
+        }
+    }
+    println!("Debug: This Is All Apps in your system {:?}",apps);
 }
 
 fn setup_dir(config_path: PathBuf, app_path: Env) -> Result<(), String> {
