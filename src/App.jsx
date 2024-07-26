@@ -11,6 +11,8 @@ import Login from './components/login/login'
 import Logs from './components/log/logs'
 import ProfileSettings from './components/profileSetting/ProfileSetting'
 import Loading from './components/loading/loading'
+import DesktopMenu from './components/desktopMenu/desktopMenu'
+import TimerClock from './components/timerClock/TimerClock'
 
 function App() {
 
@@ -57,17 +59,27 @@ function App() {
   // };
 
   return (
-    <div data-theme="cupcake" className="flex flex-col min-h-screen">
+    <div data-theme="cupcake" className="flex flex-col min-h-screen"
+    style={{
+      // height: '38rem',
+      // maxWidth: '640px',
+      background: 'linear-gradient(to bottom right, #E17AFE, #9BAAFF)'
+    }}
+    >
 
 
       {loading &&
         <div className="h-screen w-screen flex items-center justify-center">
-          <Loading setUser={setUser }setLoading={setLoading} setConfig={setConfig} />
+          <Loading setUser={setUser} setLoading={setLoading} setConfig={setConfig} />
         </div>
       }
 
-      {!loading &&
+      {/* {!loading &&
         <MobileMenu activeButton={activeButton} setActiveButton={setActiveButton} />
+      } */}
+
+      {!loading &&
+        <DesktopMenu activeButton={activeButton} setActiveButton={setActiveButton} />
       }
 
       {!user && !loading && config &&
@@ -86,12 +98,17 @@ function App() {
           <Logs config={config} />
         </div>
       }
-      {config && user && activeButton === 3 &&
+      {/* {config && user && activeButton === 3 &&
         <div className="pt-8 pb-8 h-screen w-screen flex items-center justify-center overflow-auto">
-          <ProfileSettings config={config} setConfig={setConfig} setLoading={setLoading}/>
+          <ProfileSettings config={config} setConfig={setConfig} setLoading={setLoading} />
+        </div>
+      } */}
+      {config && user && activeButton === 3 &&
+        <div className="pt-2 pb-2 h-screen w-screen flex items-center justify-center overflow-auto">
+          <TimerClock config={config} setConfig={setConfig} setLoading={setLoading} />
         </div>
       }
-      {config && !save && tab == 1 &&
+      {/* {config && !save && tab == 1 &&
         <div className="toast toast-top toast-end space-y-2">
           <div className="alert alert-info p-4">
             <div className="flex flex-row items-center space-x-2">
@@ -103,12 +120,12 @@ function App() {
             </div>
           </div>
         </div>
-      }
-      {config && !save && tab == 2 &&
+      } */}
+      {/* {config && !save && tab == 2 &&
         <div onClick={() => changeTab(1)} className="toast toast-top toast-end space-y-2">
           <span className="loading loading-infinity loading-lg "></span>
         </div>
-      }
+      } */}
 
       {/* <div>
         <a href="https://vitejs.dev" target="_blank">
