@@ -59,7 +59,9 @@ function Integration({ config, setConfig }) {
                                     {i.description}
                                 </p>
                                 <div className="mt-6 text-right">
-                                    <input type="checkbox" className="toggle toggle-success toggle-lg" checked={i.isActive} onChange={() => updateIntegrationStatus(k)} />
+                                    <input type="checkbox" className="toggle toggle-success toggle-lg"  style={
+                                        { '--tglbg': '#D9C6E0' ,border:"transparent"}
+                                        } checked={i.isActive} onChange={() => updateIntegrationStatus(k)} />
                                 </div>
                             </TitleCard>
                         )
