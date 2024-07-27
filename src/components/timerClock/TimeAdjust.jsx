@@ -58,13 +58,6 @@ function TimerAdjust({ time, setTime }) {
         };
     };
 
-    const handleIcns = () => {
-        console.log("reading...")
-        invoke("read_icns").then(res => {
-            setBase64Image(res)
-        });
-    };
-
     return (
         <dialog id="my_modal_4" className="modal text-white">
             <div
@@ -101,12 +94,6 @@ function TimerAdjust({ time, setTime }) {
                             <option key={num} value={num}>{num}</option>
                         ))}
                     </select>
-                    <button className="btn" onClick={handleIcns}>Test</button>
-                    <img
-                        src={`data:image/png;base64,${base64Image}`}
-                        alt="Base64 Encoded"
-                        style={{ maxWidth: '100%', height: 'auto' }}
-                    />
 
                 </div>
 

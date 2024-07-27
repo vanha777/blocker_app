@@ -89,7 +89,7 @@ function App() {
       }
 
       {config && user && activeButton === 1 &&
-        <div className="flex items-center justify-center pb-10">
+        <div className="w-screen flex items-center justify-center pb-10">
           <Integration config={config} setConfig={setConfig} />
         </div>
       }

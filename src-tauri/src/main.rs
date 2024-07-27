@@ -19,13 +19,14 @@ use std::{env, thread};
 use tauri::api::path::{app_config_dir, config_dir};
 use tauri::utils::config;
 use tauri::SystemTray;
-use tauri::{api::process::restart, Env, Manager};
+use tauri::{api::process::restart, Env, Manager, State};
 use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 use tauri_plugin_autostart::MacosLauncher;
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 extern crate icns;
 use icns::{IconFamily, IconType, Image};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod handler;
 
@@ -112,6 +113,9 @@ struct ApiConfig {
     data: Option<String>,
     active: Option<bool>,
 }
+
+#[derive(Default)]
+struct StopFlag(Arc<Mutex<AtomicBool>>);
 // fn restart_application() {
 //     Command::new(env::current_exe().unwrap())
 //         .spawn()
@@ -245,6 +249,7 @@ async fn send_data() -> Result<(), String> {
 
 fn main() {
     println!("Debug: Starting Applcation ...");
+    let stop_flag = StopFlag(Arc::new(Mutex::new(AtomicBool::new(false))));
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     // let hide = CustomMenuItem::new("hide".to_string(), "Hide");
     let open = CustomMenuItem::new("open".to_string(), "Open");
@@ -376,6 +381,7 @@ fn main() {
             },
             _ => {}
         })
+        .manage(stop_flag)
         .invoke_handler(tauri::generate_handler![
             greet,
             crash,
@@ -388,15 +394,15 @@ fn main() {
             fetch_app,
             block_app,
             enable_focus_mode,
-            read_icns
+            stop_focus_mode
         ])
-        .on_window_event(|event| match event.event() {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                event.window().hide().unwrap();
-                api.prevent_close();
-            }
-            _ => {}
-        })
+        // .on_window_event(|event| match event.event() {
+        //     tauri::WindowEvent::CloseRequested { api, .. } => {
+        //         event.window().hide().unwrap();
+        //         api.prevent_close();
+        //     }
+        //     _ => {}
+        // })
         // .setup(|app| {
         //     if env::var("TAURI_APP_CRASHED").is_ok() {
         //         env::remove_var("TAURI_APP_CRASHED");
@@ -628,11 +634,11 @@ async fn fetch_app() {
                 let icon_path_string = match find_icon_in_resources(&path_string.clone()) {
                     Some(x) => match read_icns(x) {
                         Ok(x) => Some(x),
-                        _ => None,
+                        _ => Some(crate::handler::get_error_skeleton_base64()),
                     },
-                    None => None,
+                    _ => Some(crate::handler::get_error_skeleton_base64()),
                 };
-        
+
                 apps.push(Api {
                     integration_name: Some(name.clone()),
                     icon: icon_path_string,
@@ -772,9 +778,10 @@ async fn block_app() {
 }
 
 #[tauri::command]
-async fn enable_focus_mode() -> Result<(), String> {
+async fn enable_focus_mode(seconds: u64, stop_flag: State<'_, StopFlag>) -> Result<(), String> {
     println!("Debug: focus mode triggering 0");
     let app_config = read_config().unwrap().api_config;
+    let stop_flag = Arc::clone(&stop_flag.0); // Clone the Arc for thread access
     let mut app_name_vec = Vec::new();
     if let Some(apps) = app_config {
         for app in apps {
@@ -796,10 +803,15 @@ async fn enable_focus_mode() -> Result<(), String> {
     // Spawn a thread to monitor and block apps
     let handle = thread::spawn(move || {
         let start_time = std::time::Instant::now();
-        let duration = Duration::from_secs(20);
-
+        let duration = Duration::from_secs(seconds);
         while start_time.elapsed() < duration {
             println!("Debug: this is in loop ...");
+            // Lock the mutex to access the shared state
+            let stop_flag = stop_flag.lock().unwrap();
+            if stop_flag.load(Ordering::SeqCst) {
+                println!("Debug: Stopping focus mode");
+                break;
+            }
             for app in &app_name_vec {
                 // Check if the app is running
                 let output = Command::new("pgrep")
@@ -825,6 +837,17 @@ async fn enable_focus_mode() -> Result<(), String> {
 
     // Wait for the thread to finish
     let _ = handle.join();
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn stop_focus_mode(stop_flag: State<'_, StopFlag>, new_value: bool) -> Result<(), String> {
+    // Lock the mutex to access the AtomicBool
+    let mut stop_flag = stop_flag.0.lock().unwrap();
+
+    // Update the AtomicBool with the new value
+    stop_flag.store(new_value, Ordering::SeqCst);
 
     Ok(())
 }
