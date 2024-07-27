@@ -34,7 +34,7 @@ const Loading = ({ setUser, setLoading, setConfig }) => {
                         } else {
                             setUser(false);
                         }
-                    }, 2000); // 2-second delay
+                    }, 3000); // 2-second delay
                 });
             } catch (error) {
                 console.error(error);
@@ -52,14 +52,12 @@ const Loading = ({ setUser, setLoading, setConfig }) => {
     };
 
     return (
-        <div>
-            <div
-                className="radial-progress text-primary"
-                style={{ "--value": progress, "--size": "12rem", "--thickness": "2rem" }}
-                role="progressbar"
-            >
-                {progress}%
-            </div>
+        <div className="w-40 h-40">
+            <img
+                src="./text.gif"
+                alt="Shoes"
+            // className="w-20 h-20"
+            />
         </div>
     );
 }

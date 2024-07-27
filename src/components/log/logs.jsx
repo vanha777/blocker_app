@@ -79,10 +79,18 @@ function Logs({ config }) {
         console.log("this is Focusing")
     };
 
+    const callFetchApp = () => {
+        invoke("fetch_app").then((response) => {
+            console.log("This Is Get Item response", response)
+        })
+        console.log("this is Focusing")
+    };
+
     console.log("DEBUGGG config hereeee", config);
     return (
         <div className="w-full h-full overflow-y-auto p-4 pb-8">
-
+<button className="btn btn-primary float-right" onClick={() => callFocus()}>focus</button>
+<button className="btn btn-primary float-right" onClick={() => callFetchApp()}>fetch app</button>
             <TitleCard title="Logs" topMargin="mt-6" TopSideButtons="Refresh" callRefresh={callFocus}>
 
                 {/* Invoice list in table format loaded constant */}

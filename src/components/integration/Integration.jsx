@@ -17,14 +17,14 @@ import { invoke } from '@tauri-apps/api'
 
 function Integration({ config, setConfig }) {
 
-    // useEffect(() => {
-    //     console.log("Config updated detected ...");
-    //     // invoke("read_config").then((response) => {
-    //     //     setConfig(config);
-    //     // }).catch((err) => {
-    //     //     console.log("error to fetch config ", err);
-    //     // });
-    // }, [config]); // Empty dependency array ensures this runs only once
+    useEffect(() => {
+        console.log("Config updated detected ...");
+        invoke("read_config").then((response) => {
+            setConfig(response);
+        }).catch((err) => {
+            console.log("error to fetch config ", err);
+        });
+    }, []); // Empty dependency array ensures this runs only once
 
     const [integrationList, setIntegrationList] = useState(config.api_config || null);
     const [newConfig, setNewConfig] = useState(config);
@@ -55,7 +55,7 @@ function Integration({ config, setConfig }) {
                         return (
                             <TitleCard key={k} title={i.name} topMargin={"mt-2"}>
                                 <p className="flex">
-                                    <img alt="icon" src={i.icon} className="w-12 h-12 inline-block mr-4" />
+                                    <img alt="icon" src={`data:image/png;base64,${i.icon}`} className="w-12 h-12 inline-block mr-4" />
                                     {i.description}
                                 </p>
                                 <div className="mt-6 text-right">

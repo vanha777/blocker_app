@@ -23,10 +23,10 @@ const DesktopMenu = ({ activeButton, setActiveButton }) => {
             <div className="flex-1">
                 {/* <a className="btn btn-ghost text-xl">daisyUI</a> */}
                 <img
-  src="https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
-  alt="Shoes"
-  className="w-20 h-15" // Width of 16rem and height of 10rem
-/>
+                    src="./text.png"
+                    alt="Shoes"
+                    className="w-20 h-20" // Width of 16rem and height of 10rem
+                />
             </div>
             <div className="flex-none">
                 <button className="btn btn-ghost btn-circle" onClick={() => handleButtonClick(1)}>

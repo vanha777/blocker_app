@@ -63,7 +63,7 @@ function App() {
     style={{
       // height: '38rem',
       // maxWidth: '640px',
-      background: 'linear-gradient(to bottom right, #E17AFE, #9BAAFF)'
+      background: 'linear-gradient(to right, #E17AFE, #9BAAFF)'
     }}
     >
 
