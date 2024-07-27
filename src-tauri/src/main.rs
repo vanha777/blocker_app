@@ -1,5 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use base64::encode;
 use image::{DynamicImage, GenericImageView, ImageFormat};
 use lazy_static::lazy_static;
 use reqwest::header::{HeaderMap, HeaderValue};
@@ -7,8 +8,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fs::{self, create_dir_all, read_to_string, File};
-use std::io::Read;
+use std::fs::{self, create_dir_all, read_to_string, File, OpenOptions};
+use std::io::{BufReader, BufWriter};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
@@ -20,7 +22,10 @@ use tauri::SystemTray;
 use tauri::{api::process::restart, Env, Manager};
 use tauri::{CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 use tauri_plugin_autostart::MacosLauncher;
+use tempfile::NamedTempFile;
 use uuid::Uuid;
+extern crate icns;
+use icns::{IconFamily, IconType, Image};
 
 mod handler;
 
@@ -270,6 +275,8 @@ fn main() {
             Some(vec!["--flag1", "--flag2"]), /* arbitrary number of args to pass to your app */
         ))
         .setup(|app| {
+            // let config = tauri::Config::default();
+            // println!("this is local os config for the apps: {:#?}",config);
             println!("Debug: Setting up application ...");
             // let mut config = Config::default();
             let app_name = "com.zen_blocker.dev";
@@ -380,7 +387,8 @@ fn main() {
             config_edit,
             fetch_app,
             block_app,
-            enable_focus_mode
+            enable_focus_mode,
+            read_icns
         ])
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -601,6 +609,7 @@ async fn login(username: &str, password: &str) -> Result<Config, String> {
 async fn fetch_app() {
     let mut app_config = read_config().unwrap();
     let mut apps = Vec::new();
+    // this is macOs specific apps ... currently don't have time to play with window
     let app_dir = PathBuf::from("/Applications");
     if app_dir.exists() {
         for entry in fs::read_dir(app_dir).unwrap() {
@@ -616,21 +625,19 @@ async fn fetch_app() {
                     .trim()
                     .to_string();
                 let path_string = path.to_string_lossy().trim().to_string();
-                let icon_path_string = find_icon_in_resources(&path_string.clone());
-                apps.push(Api {
-                    integration_name: Some(name),
-                    icon: match icon_path_string {
-                        Some(x) => match convert_icns_to_png(x).await {
-                            Ok(png_path) => Some(png_path),
-                            Err(_e) => {
-                                println!("Debug: error converting png {:?}", _e);
-                                None
-                            }
-                        },
-                        None => None,
+                let icon_path_string = match find_icon_in_resources(&path_string.clone()) {
+                    Some(x) => match read_icns(x) {
+                        Ok(x) => Some(x),
+                        _ => None,
                     },
+                    None => None,
+                };
+        
+                apps.push(Api {
+                    integration_name: Some(name.clone()),
+                    icon: icon_path_string,
                     is_active: false,
-                    description: None,
+                    description: Some(name.replace(".app", "")),
                     subscription_key: None,
                     api_key: None,
                     api: None,
@@ -641,6 +648,81 @@ async fn fetch_app() {
     }
     app_config.api_config = Some(apps);
     let _ = config_edit(app_config).unwrap();
+}
+
+#[tauri::command]
+fn read_icns(icns_path: PathBuf) -> Result<String, String> {
+    println!("debug 0, this is icns path {:#?}", icns_path);
+    // Load an icon family from an ICNS file.
+    let file = match File::open(icns_path) {
+        Ok(x) => x,
+        Err(_e) => {
+            println!("this is errror {:?}", _e.to_string());
+            return Err("".to_string());
+        }
+    };
+    let file_byte = BufReader::new(file);
+    let mut icon_family = match IconFamily::read(file_byte) {
+        Ok(x) => x,
+        _ => return Err("".to_string()),
+    };
+    println!("debug 1");
+    // Extract an icon from the family and save it as a PNG.
+    let image_type = match icon_family.available_icons().get(0) {
+        Some(x) => x.clone(),
+        None => return Err("".to_string()),
+    };
+
+    let image = match icon_family.get_icon_with_type(image_type) {
+        Ok(x) => x,
+        _ => return Err("".to_string()),
+    };
+    println!("debug 2 ");
+    // let file = BufWriter::new(File::create("assets/test.png").unwrap());
+    // println!("debug 3");
+    // image.data().write_png(file).unwrap();
+    // Write the image to a temporary file.
+    let mut temp_file = match NamedTempFile::new() {
+        Ok(x) => x,
+        _ => return Err("".to_string()),
+    };
+    {
+        let mut buffer = Vec::new();
+        match image.write_png(&mut buffer) {
+            Ok(x) => (),
+            _ => return Err("".to_string()),
+        }
+        match temp_file.write_all(&buffer) {
+            Ok(x) => (),
+            _ => return Err("".to_string()),
+        }
+    }
+    match temp_file.flush() {
+        Ok(x) => (),
+        _ => return Err("".to_string()),
+    } // Ensure the file is written
+    println!("debug 4");
+
+    // Read the temporary file and encode it to Base64.
+    let mut temp_file = match File::open(temp_file.path()) {
+        Ok(x) => x,
+        _ => return Err("".to_string()),
+    };
+    let mut buffer = Vec::new();
+    match temp_file.read_to_end(&mut buffer) {
+        Err(_) => return Err("".to_string()),
+        _ => (),
+    }
+    let base64_encoded = encode(&buffer);
+
+    // // Write the Base64 string to assets/test.txt.
+    // let mut output_file = OpenOptions::new()
+    //     .write(true)
+    //     .create(true)
+    //     .open("assets/test.txt").unwrap();
+    // write!(output_file, "{}", base64_encoded).unwrap();
+    println!("debug 5");
+    Ok(base64_encoded)
 }
 
 #[tauri::command]
