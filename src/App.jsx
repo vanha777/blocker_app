@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
@@ -16,9 +16,24 @@ import TimerClock from './components/timerClock/TimerClock'
 
 function App() {
 
-  // useEffect(() => {
-  //   auto_start();
-  // }, []);
+  useEffect(() => {
+    if (config?.auto_start == false) {
+      try {
+        console.log("triggering auto-start...");
+   
+        auto_start().then((res) => {
+          let new_config = config;
+          new_config.auto_start = true;
+          invoke("config_edit", { config: new_config }).then((response) => {
+            console.log("this is response config_update ", response);
+            setConfig(response)
+          })
+        });
+      } catch {
+        console.log("Failed to trigger auto-start");
+      }
+    }
+  }, []);
 
   const auto_start = async () => {
     // set auto-start  -> only required first-time -> will be vary on OS ...
@@ -60,11 +75,11 @@ function App() {
 
   return (
     <div data-theme="cupcake" className="flex flex-col min-h-screen"
-    style={{
-      // height: '38rem',
-      // maxWidth: '640px',
-      background: 'linear-gradient(to right, #E17AFE, #9BAAFF)'
-    }}
+      style={{
+        // height: '38rem',
+        // maxWidth: '640px',
+        background: 'linear-gradient(to right, #E17AFE, #9BAAFF)'
+      }}
     >
 
 

@@ -15,7 +15,10 @@
       "iconAsTemplate": false
     },
     "allowlist": {
-      "all": false
+      "notification": {
+        "all": true
+      },
+      "all": true
     },
     "bundle": {
       "active": true,

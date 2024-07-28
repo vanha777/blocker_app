@@ -4,9 +4,9 @@ import { invoke } from '@tauri-apps/api'
 import TimerAdjust from "./TimeAdjust";
 
 function TimerClock({ config, setConfig, setLoading }) {
-    // const numbers = Array.from({ length: 100 }, (_, index) => index);
+    const audio = new Audio('./ringtone.wav');
 
-    const [time, setTime] = useState(0); // Set initial time in seconds (e.g., 5 minutes)
+    const [time, setTime] = useState(500); // Set initial time in seconds (e.g., 5 minutes)
     const [isRunning, setIsRunning] = useState(false);
     // const [adjustment, setAdjustment] = useState(false);
 
@@ -26,6 +26,11 @@ function TimerClock({ config, setConfig, setLoading }) {
                 setTimeout(() => {
                     setIsRunning(false);
                 }, 1000);
+                audio.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                  });
+                  //trigger_notification
+                  invoke('trigger_notification', { title: "ZenBlocker: Time's up",body:"You are free now" })
             }
         } else {
             console.log("stoping zen block")

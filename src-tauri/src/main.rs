@@ -3,6 +3,7 @@
 use base64::encode;
 use image::{DynamicImage, GenericImageView, ImageFormat};
 use lazy_static::lazy_static;
+use notify_rust::{Notification,Hint};
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
@@ -27,6 +28,7 @@ use uuid::Uuid;
 extern crate icns;
 use icns::{IconFamily, IconType, Image};
 use std::sync::atomic::{AtomicBool, Ordering};
+use notify_rust::error::Result as NotificationResult;
 
 mod handler;
 
@@ -79,6 +81,7 @@ struct Config {
     client_id: Option<String>,
     version: Option<u8>,
     // api_config: Option<HashMap<String, Vec<ApiConfig>>>,
+    auto_start: bool,
     api_config: Option<Vec<Api>>,
 }
 
@@ -301,6 +304,7 @@ fn main() {
                         cloud_url: None,
                         client_id: None,
                         version: Some(0),
+                        auto_start:false,
                         api_config: None,
                     };
                     println!("Debug: Creating default config file...");
@@ -394,7 +398,8 @@ fn main() {
             fetch_app,
             block_app,
             enable_focus_mode,
-            stop_focus_mode
+            stop_focus_mode,
+            trigger_notification
         ])
         // .on_window_event(|event| match event.event() {
         //     tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -417,9 +422,9 @@ fn main() {
             tauri::RunEvent::ExitRequested { api, .. } => {
                 api.prevent_exit();
             }
-            tauri::RunEvent::Exit => {
-                _app_handle.restart();
-            }
+            // tauri::RunEvent::Exit => {
+            //     _app_handle.restart();
+            // }
             // tauri::RunEvent::WindowEvent { label, event } => todo!(),
             // tauri::RunEvent::Ready => todo!(),
             // tauri::RunEvent::Resumed => todo!(),
@@ -938,4 +943,21 @@ fn setup_dir(config_path: PathBuf, app_path: Env) -> Result<(), String> {
         .map_err(|e| format!("Mutex lock error: {:?}", e))?;
     *lock = Some(app_path);
     Ok(())
+}
+
+#[tauri::command]
+fn trigger_notification(title: &str, body: &str) {
+    println!("Debug: Attempting to trigger notification");
+
+    let result = Notification::new()
+        .summary(title)
+        .body(body)
+        .sound_name("Glass") // Specify the sound to play
+        .auto_icon()
+        .show();
+
+    match result {
+        Ok(_) => println!("Debug: Notification shown successfully"),
+        Err(e) => println!("Error: Failed to show notification: {:?}", e),
+    }
 }
